@@ -1,0 +1,9 @@
+# Build outputs
+dist/
+build/
+
+# Test coverage
+coverage/
+
+# VS Code extension specific
+*.vsix

@@ -1,0 +1,50 @@
+## CRITICAL: Exclude parent directories - vsce must not traverse up
+..
+../
+../../
+../../../
+../**
+../../**
+../../../**
+
+## Exclude node modules and test artifacts - must be first and absolute
+node_modules
+**/node_modules
+.vscode/
+.vscode-test/
+.vscode-test-web/
+**/__tests__/**
+**/*.spec.*
+**/*.test.*
+e2e/
+test/
+
+## Build and editor files
+dist/**/*.map
+dist/**/*.d.ts
+build/
+coverage/
+*.map
+
+## Git and CI - exclude completely
+.git
+.git/**
+.github/
+**/.git
+**/.git/**
+
+## Root-level ignores that may be pulled in from monorepo
+../../.eslintignore
+../../.gitignore
+../../.npmignore
+../../.prettierignore
+
+## Large or irrelevant folders
+**/playwright-report/**
+**/test-results/**
+**/node_modules/**
+node_modules/.bin/**
+**/.bin/**
+
+## VSCE doesn't allow packaging files outside the extension folder
+**/..*/**

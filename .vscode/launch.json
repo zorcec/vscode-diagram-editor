@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run AgentWatch Extension",
+            "type": "extensionHost",
+            "request": "launch",
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode-extension",
+                "${workspaceFolder}/packages/vscode-extension/e2e/test-project"
+            ],
+            "outFiles": [
+                "${workspaceFolder}/packages/vscode-extension/dist/**/*.js"
+            ],
+            "preLaunchTask": "Build Extension"
+        }
+    ]
+}

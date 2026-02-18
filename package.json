@@ -1,0 +1,24 @@
+{
+  "name": "agent-watch-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "vitest run --exclude '**/e2e/**'",
+    "test:watch": "vitest --exclude '**/e2e/**'",
+    "e2e": "npm run build && xvfb-run -a npx playwright test",
+    "e2e:headed": "npm run build && npx playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.3.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "electron": "^39.1.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
