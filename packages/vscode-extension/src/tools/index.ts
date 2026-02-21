@@ -7,6 +7,9 @@ import { UpdateNodesTool } from './UpdateNodesTool';
 import { AddEdgesTool } from './AddEdgesTool';
 import { RemoveEdgesTool } from './RemoveEdgesTool';
 import { UpdateEdgesTool } from './UpdateEdgesTool';
+import { AddGroupsTool } from './AddGroupsTool';
+import { RemoveGroupsTool } from './RemoveGroupsTool';
+import { UpdateGroupsTool } from './UpdateGroupsTool';
 
 export function registerDiagramTools(
   context: vscode.ExtensionContext,
@@ -20,6 +23,9 @@ export function registerDiagramTools(
     ['diagramflow_addEdges', new AddEdgesTool(diagramService)],
     ['diagramflow_removeEdges', new RemoveEdgesTool(diagramService)],
     ['diagramflow_updateEdges', new UpdateEdgesTool(diagramService)],
+    ['diagramflow_addGroups', new AddGroupsTool(diagramService)],
+    ['diagramflow_removeGroups', new RemoveGroupsTool(diagramService)],
+    ['diagramflow_updateGroups', new UpdateGroupsTool(diagramService)],
   ];
 
   for (const [name, tool] of tools) {

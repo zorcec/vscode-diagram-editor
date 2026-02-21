@@ -2,7 +2,16 @@ import type { DiagramDocument, NodeShape, NodeColor, EdgeStyle, ArrowType } from
 
 export type WebviewMessage =
   | { type: 'WEBVIEW_READY' }
-  | { type: 'NODE_DRAGGED'; id: string; position: { x: number; y: number } }
+  | {
+      type: 'NODE_DRAGGED';
+      id: string;
+      position: { x: number; y: number };
+    }
+  | {
+      type: 'GROUP_DRAGGED';
+      id: string;
+      position: { x: number; y: number };
+    }
   | {
       type: 'NODE_RESIZED';
       id: string;
@@ -13,6 +22,16 @@ export type WebviewMessage =
       node: { label: string; shape?: NodeShape; color?: NodeColor; notes?: string };
     }
   | { type: 'DELETE_NODES'; nodeIds: string[] }
+  | {
+      type: 'ADD_GROUP';
+      label: string;
+    }
+  | { type: 'DELETE_GROUPS'; groupIds: string[] }
+  | {
+      type: 'UPDATE_GROUP_PROPS';
+      id: string;
+      changes: { label?: string; color?: NodeColor };
+    }
   | {
       type: 'ADD_EDGE';
       edge: { source: string; target: string; label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean };
@@ -27,6 +46,7 @@ export type WebviewMessage =
         shape?: NodeShape;
         color?: NodeColor;
         notes?: string;
+        group?: string | null;
       };
     }
   | {

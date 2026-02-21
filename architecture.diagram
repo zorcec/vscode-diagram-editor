@@ -3,7 +3,7 @@
     "version": "1.0",
     "title": "DiagramFlow — Project Architecture",
     "created": "2026-02-21T00:00:00Z",
-    "modified": "2026-02-21T15:14:55.171Z"
+    "modified": "2026-02-21T16:38:08.933Z"
   },
   "nodes": [
     {
@@ -66,7 +66,7 @@
     },
     {
       "id": "lm_tools",
-      "label": "LM Tools (7 tools)",
+      "label": "LM Tools (10 tools)",
       "shape": "rectangle",
       "color": "purple",
       "x": 750,
@@ -74,7 +74,8 @@
       "width": 200,
       "height": 48,
       "pinned": true,
-      "group": "g_host"
+      "group": "g_host",
+      "notes": "Includes 3 group tools: addGroups, removeGroups, updateGroups (added in groups feature)"
     },
     {
       "id": "operations",
@@ -217,6 +218,19 @@
       "width": 190,
       "height": 48,
       "pinned": true
+    },
+    {
+      "id": "-uYD47mX",
+      "label": "DiagramGroupNode",
+      "x": 60,
+      "y": 60,
+      "width": 160,
+      "height": 48,
+      "shape": "rectangle",
+      "color": "blue",
+      "pinned": false,
+      "notes": "Custom ReactFlow node for rendering group containers",
+      "group": "g_webview"
     }
   ],
   "edges": [
@@ -390,6 +404,14 @@
       "style": "solid",
       "arrow": "normal",
       "animated": false
+    },
+    {
+      "id": "GvkQ9pJ5",
+      "source": "canvas",
+      "target": "-uYD47mX",
+      "label": "renders groups",
+      "style": "dashed",
+      "arrow": "arrow"
     }
   ],
   "groups": [
@@ -416,8 +438,8 @@
   },
   "agentContext": {
     "format": "diagramflow-v1",
-    "generatedAt": "2026-02-21T15:14:55.172Z",
-    "summary": "\"DiagramFlow — Project Architecture\" contains 18 nodes (\"User / Developer\", \"GitHub Copilot\", \"Extension Entry (extension.ts)\", \"DiagramEditorProvider\", \"DiagramService\" and 13 more) connected by 19 edges. Grouped into: \"Extension Host (VS Code)\" (4 nodes), \"Core Libraries (Pure Functions)\" (6 nodes), \"Webview (React)\" (4 nodes).",
+    "generatedAt": "2026-02-21T16:38:08.933Z",
+    "summary": "\"DiagramFlow — Project Architecture\" contains 19 nodes (\"User / Developer\", \"GitHub Copilot\", \"Extension Entry (extension.ts)\", \"DiagramEditorProvider\", \"DiagramService\" and 14 more) connected by 20 edges. Grouped into: \"Extension Host (VS Code)\" (4 nodes), \"Core Libraries (Pure Functions)\" (6 nodes), \"Webview (React)\" (5 nodes).",
     "nodeIndex": [
       {
         "id": "user",
@@ -444,7 +466,8 @@
       },
       {
         "id": "lm_tools",
-        "label": "LM Tools (7 tools)",
+        "label": "LM Tools (10 tools)",
+        "notes": "Includes 3 group tools: addGroups, removeGroups, updateGroups (added in groups feature)",
         "group": "g_host"
       },
       {
@@ -504,6 +527,12 @@
       {
         "id": "protocol",
         "label": "Message Protocol"
+      },
+      {
+        "id": "-uYD47mX",
+        "label": "DiagramGroupNode",
+        "notes": "Custom ReactFlow node for rendering group containers",
+        "group": "g_webview"
       }
     ],
     "edgeIndex": [
@@ -514,7 +543,7 @@
       },
       {
         "from": "GitHub Copilot",
-        "to": "LM Tools (7 tools)",
+        "to": "LM Tools (10 tools)",
         "label": "invokes tools",
         "style": "dashed"
       },
@@ -530,7 +559,7 @@
       },
       {
         "from": "Extension Entry (extension.ts)",
-        "to": "LM Tools (7 tools)",
+        "to": "LM Tools (10 tools)",
         "label": "registers"
       },
       {
@@ -539,7 +568,7 @@
         "label": "delegates ops"
       },
       {
-        "from": "LM Tools (7 tools)",
+        "from": "LM Tools (10 tools)",
         "to": "DiagramService",
         "label": "semantic ops",
         "style": "dashed"
@@ -602,6 +631,12 @@
         "from": "operations.ts",
         "to": "agentContext.ts",
         "label": "generates"
+      },
+      {
+        "from": "CanvasPanel",
+        "to": "DiagramGroupNode",
+        "label": "renders groups",
+        "style": "dashed"
       }
     ],
     "groupIndex": [
@@ -611,7 +646,7 @@
           "Extension Entry (extension.ts)",
           "DiagramEditorProvider",
           "DiagramService",
-          "LM Tools (7 tools)"
+          "LM Tools (10 tools)"
         ]
       },
       {
@@ -631,7 +666,8 @@
           "React Flow Webview",
           "CanvasPanel",
           "Toolbar",
-          "PropertiesPanel"
+          "PropertiesPanel",
+          "DiagramGroupNode"
         ]
       }
     ],

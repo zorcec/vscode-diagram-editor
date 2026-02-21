@@ -10,11 +10,12 @@ import {
 } from '@xyflow/react';
 import { DiagramNode } from './DiagramNode';
 import { DiagramEdge } from './DiagramEdge';
+import { DiagramGroupNode } from './DiagramGroupNode';
 import { Toolbar } from './Toolbar';
 import { PropertiesPanel } from './PropertiesPanel';
 import type { GraphState } from '../hooks/useGraphState';
 
-const nodeTypes = { diagramNode: DiagramNode };
+const nodeTypes = { diagramNode: DiagramNode, diagramGroup: DiagramGroupNode };
 const edgeTypes = { diagramEdge: DiagramEdge };
 
 const MINIMAP_NODE_COLORS: Record<string, string> = {
@@ -37,6 +38,9 @@ export function CanvasPanel({ graph }: CanvasPanelProps) {
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         graph.onAddNode();
+      } else if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
+        graph.onAddGroup();
       } else if (e.key === 'l' || e.key === 'L') {
         e.preventDefault();
         graph.onRequestLayout();
@@ -52,19 +56,33 @@ export function CanvasPanel({ graph }: CanvasPanelProps) {
 
   const nodesWithCallbacks = useMemo(
     () =>
-      graph.nodes.map((node) => ({
-        ...node,
-        data: { ...node.data, onLabelChange: graph.onNodeLabelChange },
-      })),
-    [graph.nodes, graph.onNodeLabelChange],
+      graph.allNodes.map((node) => {
+        if (node.type === 'diagramGroup') return node;
+        return {
+          ...node,
+          data: { ...node.data, onLabelChange: graph.onNodeLabelChange },
+        };
+      }),
+    [graph.allNodes, graph.onNodeLabelChange],
   );
 
-  // Determine what the PropertiesPanel should display
+  // Determine what the PropertiesPanel should display.
   const propertiesPanelInput = useMemo(() => {
+    if (graph.selectedGroupId) {
+      const group = graph.groups.find((g) => g.id === graph.selectedGroupId);
+      if (group) {
+        return { kind: 'group' as const, group, onUpdateGroup: graph.onUpdateGroupProps };
+      }
+    }
     if (graph.selectedNodeId) {
       const node = graph.nodes.find((n) => n.id === graph.selectedNodeId);
       if (node) {
-        return { kind: 'node' as const, node, onUpdateNode: graph.onUpdateNodeProps };
+        return {
+          kind: 'node' as const,
+          node,
+          groups: graph.groups,
+          onUpdateNode: graph.onUpdateNodeProps,
+        };
       }
     }
     if (graph.selectedEdgeId) {
@@ -75,12 +93,15 @@ export function CanvasPanel({ graph }: CanvasPanelProps) {
     }
     return { kind: 'none' as const };
   }, [
+    graph.selectedGroupId,
     graph.selectedNodeId,
     graph.selectedEdgeId,
+    graph.groups,
     graph.nodes,
     graph.edges,
     graph.onUpdateNodeProps,
     graph.onUpdateEdgeProps,
+    graph.onUpdateGroupProps,
   ]);
 
   return (
@@ -88,6 +109,7 @@ export function CanvasPanel({ graph }: CanvasPanelProps) {
     <div className="canvas-container" data-testid="canvas-container">
       <Toolbar
         onAddNode={graph.onAddNode}
+        onAddGroup={graph.onAddGroup}
         onAutoLayout={graph.onRequestLayout}
         onExportSvg={graph.onExportSvg}
         onExportPng={graph.onExportPng}

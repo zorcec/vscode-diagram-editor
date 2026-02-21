@@ -146,6 +146,23 @@ body {
   border-color: var(--vscode-focusBorder, #007fd4);
 }
 
+.prop-select {
+  background: var(--vscode-input-background, #3c3c3c);
+  color: var(--vscode-input-foreground, #ccc);
+  border: 1px solid var(--vscode-input-border, #555);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.prop-select:focus {
+  border-color: var(--vscode-focusBorder, #007fd4);
+}
+
 .prop-checkbox {
   cursor: pointer;
   width: 14px;
@@ -524,4 +541,65 @@ body {
 
 .react-flow__controls-button svg {
   fill: var(--vscode-button-secondaryForeground, #ccc);
+}
+
+/* -------------------------------------------------------------------------
+   Group node
+   ---------------------------------------------------------------------- */
+
+.diagram-group {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.025);
+  border: 2px dashed var(--vscode-panel-border, #555);
+  border-radius: 8px;
+  position: relative;
+  pointer-events: all;
+}
+
+.diagram-group--selected {
+  border-color: var(--vscode-focusBorder, #007fd4);
+  background: rgba(0, 127, 212, 0.06);
+}
+
+.diagram-group-label {
+  position: absolute;
+  top: -11px;
+  left: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--vscode-descriptionForeground, #888);
+  background: var(--vscode-editor-background, #1e1e1e);
+  padding: 0 5px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Group border color variants */
+.diagram-group.group-color--blue   { border-color: #4a90d9; }
+.diagram-group.group-color--green  { border-color: #4a9a4a; }
+.diagram-group.group-color--red    { border-color: #c84040; }
+.diagram-group.group-color--yellow { border-color: #c8a840; }
+.diagram-group.group-color--purple { border-color: #8040c8; }
+.diagram-group.group-color--gray   { border-color: #666; }
+
+/* Label color matches border */
+.diagram-group.group-color--blue   .diagram-group-label { color: #4a90d9; }
+.diagram-group.group-color--green  .diagram-group-label { color: #4a9a4a; }
+.diagram-group.group-color--red    .diagram-group-label { color: #c84040; }
+.diagram-group.group-color--yellow .diagram-group-label { color: #c8a840; }
+.diagram-group.group-color--purple .diagram-group-label { color: #8040c8; }
+.diagram-group.group-color--gray   .diagram-group-label { color: #666; }
+
+/* React Flow group node wrapper overrides */
+.react-flow__node-diagramGroup {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.react-flow__node-diagramGroup.selected .diagram-group {
+  border-color: var(--vscode-focusBorder, #007fd4);
+  background: rgba(0, 127, 212, 0.06);
 }

@@ -2,6 +2,7 @@ import type {
   DiagramDocument,
   DiagramNode,
   DiagramEdge,
+  DiagramGroup,
   NodeShape,
   EdgeStyle,
   ArrowType,
@@ -25,6 +26,13 @@ export type SemanticOp =
       op: 'update_edge';
       id: string;
       changes: Partial<Omit<DiagramEdge, 'id'>>;
+    }
+  | { op: 'add_group'; group: Partial<DiagramGroup> & { label: string } }
+  | { op: 'remove_group'; id: string }
+  | {
+      op: 'update_group';
+      id: string;
+      changes: Partial<Omit<DiagramGroup, 'id'>>;
     };
 
 export interface OpResult {
@@ -33,5 +41,5 @@ export interface OpResult {
   error?: string;
 }
 
-export { type DiagramDocument, type DiagramNode, type DiagramEdge };
+export { type DiagramDocument, type DiagramNode, type DiagramEdge, type DiagramGroup };
 export { type NodeShape, type EdgeStyle, type ArrowType, type NodeColor };

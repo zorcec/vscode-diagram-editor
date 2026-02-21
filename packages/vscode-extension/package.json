@@ -405,6 +405,131 @@
             }
           }
         }
+      },
+      {
+        "name": "diagramflow_addGroups",
+        "tags": [
+          "diagram",
+          "diagramflow"
+        ],
+        "toolReferenceName": "addGroups",
+        "displayName": "Add Diagram Groups",
+        "modelDescription": "Adds one or more groups to the currently open .diagram file. Groups are visual containers that organise related nodes. Each group requires a label and optionally accepts color. After adding a group, assign nodes to it by updating their group field with diagramflow_updateNodes.",
+        "userDescription": "Add groups to the diagram to organise nodes visually.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(symbol-namespace)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "groups"
+          ],
+          "properties": {
+            "groups": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "label"
+                ],
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "description": "Display name of the group"
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "default",
+                      "blue",
+                      "green",
+                      "red",
+                      "yellow",
+                      "purple",
+                      "gray"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_removeGroups",
+        "tags": [
+          "diagram",
+          "diagramflow"
+        ],
+        "toolReferenceName": "removeGroups",
+        "displayName": "Remove Diagram Groups",
+        "modelDescription": "Removes one or more groups from the currently open .diagram file by their IDs. Child nodes are retained but detached from the group.",
+        "userDescription": "Remove groups from the diagram.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(trash)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "groupIds"
+          ],
+          "properties": {
+            "groupIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_updateGroups",
+        "tags": [
+          "diagram",
+          "diagramflow"
+        ],
+        "toolReferenceName": "updateGroups",
+        "displayName": "Update Diagram Groups",
+        "modelDescription": "Updates properties of existing groups. Each update requires the group id. Updatable: label, color.",
+        "userDescription": "Update properties of existing diagram groups.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(edit)",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "updates"
+          ],
+          "properties": {
+            "updates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "default",
+                      "blue",
+                      "green",
+                      "red",
+                      "yellow",
+                      "purple",
+                      "gray"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     ]
   },

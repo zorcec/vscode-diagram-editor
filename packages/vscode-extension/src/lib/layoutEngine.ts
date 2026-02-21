@@ -43,7 +43,8 @@ export function computePartialLayout(
 }
 
 /**
- * Computes layout for ALL nodes (ignoring pinned status).
+ * Computes layout for all NON-PINNED nodes.
+ * Pinned nodes retain their positions — only unpinned nodes are repositioned.
  * Used by the "Auto Layout All" command.
  * Dagre produces a proper hierarchical graph layout with minimized edge crossings.
  */
@@ -51,8 +52,9 @@ export function computeFullLayout(
   doc: DiagramDocument,
   config: LayoutConfig = DEFAULT_LAYOUT_CONFIG,
 ): LayoutResult[] {
-  if (doc.nodes.length === 0) return [];
-  return computeDagreLayout(doc, doc.nodes, config);
+  const unpinnedNodes = doc.nodes.filter((n) => !n.pinned);
+  if (unpinnedNodes.length === 0) return [];
+  return computeDagreLayout(doc, unpinnedNodes, config);
 }
 
 /**

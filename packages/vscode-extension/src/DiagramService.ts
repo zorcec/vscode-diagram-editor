@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { DiagramDocument } from './types/DiagramDocument';
+import { GROUP_PADDING, GROUP_LABEL_HEIGHT } from './types/DiagramDocument';
 import type { SemanticOp } from './types/operations';
 import { applyOps, createEmptyDocument } from './lib/operations';
 import { computePartialLayout, computeFullLayout } from './lib/layoutEngine';
@@ -56,10 +57,12 @@ export class DiagramService {
     if (!current) return;
 
     const resetDoc = structuredClone(current);
+    // Only reset positions for non-pinned nodes; pinned nodes stay where the user placed them.
     for (const node of resetDoc.nodes) {
-      node.pinned = false;
-      node.x = 0;
-      node.y = 0;
+      if (!node.pinned) {
+        node.x = 0;
+        node.y = 0;
+      }
     }
 
     const layoutResults = computeFullLayout(resetDoc);
@@ -74,6 +77,74 @@ export class DiagramService {
     resetDoc.meta.modified = new Date().toISOString();
     resetDoc.agentContext = generateAgentContext(resetDoc);
     await writeDocumentToFile(target, resetDoc);
+  }
+
+  /**
+   * Moves a node to an explicit position, bypassing the pinned check.
+   * This is used for user-initiated drags (where even a pinned node can be repositioned).
+   * Sets `pinned = true` so the auto-layout won't displace it afterwards.
+   */
+  async moveNode(
+    id: string,
+    position: { x: number; y: number },
+    doc?: vscode.TextDocument,
+  ): Promise<void> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return;
+
+    const current = this.parseDocument(target);
+    if (!current) return;
+
+    const modified = structuredClone(current);
+    const node = modified.nodes.find((n) => n.id === id);
+    if (!node) return;
+
+    node.x = position.x;
+    node.y = position.y;
+    node.pinned = true;
+
+    modified.meta.modified = new Date().toISOString();
+    modified.agentContext = generateAgentContext(modified);
+    await writeDocumentToFile(target, modified);
+  }
+
+  /**
+   * Moves a group node and all its child nodes by the displacement from the
+   * group's old computed position to the given new position.
+   */
+  async moveGroup(
+    groupId: string,
+    newPosition: { x: number; y: number },
+    doc?: vscode.TextDocument,
+  ): Promise<void> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return;
+
+    const current = this.parseDocument(target);
+    if (!current) return;
+
+    const modified = structuredClone(current);
+    const group = modified.groups?.find((g) => g.id === groupId);
+    if (!group) return;
+
+    const oldX = group.x ?? computeGroupOriginX(modified, groupId);
+    const oldY = group.y ?? computeGroupOriginY(modified, groupId);
+    const deltaX = newPosition.x - oldX;
+    const deltaY = newPosition.y - oldY;
+
+    for (const node of modified.nodes) {
+      if (node.group === groupId) {
+        node.x += deltaX;
+        node.y += deltaY;
+      }
+    }
+
+    group.x = newPosition.x;
+    group.y = newPosition.y;
+
+    modified.meta.modified = new Date().toISOString();
+    modified.agentContext = generateAgentContext(modified);
+    await writeDocumentToFile(target, modified);
   }
 
   emptyDocument(): DiagramDocument {
@@ -94,6 +165,20 @@ function applyPartialLayout(doc: DiagramDocument): DiagramDocument {
     }
   }
   return modified;
+}
+
+/** Returns the stored group origin X, or computes it from the children's bounding box. */
+function computeGroupOriginX(doc: DiagramDocument, groupId: string): number {
+  const children = doc.nodes.filter((n) => n.group === groupId);
+  if (children.length === 0) return 0;
+  return Math.min(...children.map((n) => n.x)) - GROUP_PADDING;
+}
+
+/** Returns the stored group origin Y, or computes it from the children's bounding box. */
+function computeGroupOriginY(doc: DiagramDocument, groupId: string): number {
+  const children = doc.nodes.filter((n) => n.group === groupId);
+  if (children.length === 0) return 0;
+  return Math.min(...children.map((n) => n.y)) - GROUP_PADDING - GROUP_LABEL_HEIGHT;
 }
 
 async function writeDocumentToFile(

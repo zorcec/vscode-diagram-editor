@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Node, Edge } from '@xyflow/react';
 import type { DiagramNodeData } from '../lib/docToFlow';
-import type { NodeShape, NodeColor, EdgeStyle, ArrowType } from '../../types/DiagramDocument';
+import type { DiagramGroup, NodeShape, NodeColor, EdgeStyle, ArrowType } from '../../types/DiagramDocument';
 import { NODE_SHAPES, NODE_COLORS, EDGE_STYLES, ARROW_TYPES } from '../../types/DiagramDocument';
 
 type NodeProps = {
   kind: 'node';
   node: Node<DiagramNodeData>;
-  onUpdateNode: (id: string, changes: { label?: string; shape?: NodeShape; color?: NodeColor; notes?: string }) => void;
+  groups: DiagramGroup[];
+  onUpdateNode: (
+    id: string,
+    changes: { label?: string; shape?: NodeShape; color?: NodeColor; notes?: string; group?: string | null },
+  ) => void;
 };
 
 type EdgeProps = {
@@ -16,9 +20,15 @@ type EdgeProps = {
   onUpdateEdge: (id: string, changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean }) => void;
 };
 
+type GroupProps = {
+  kind: 'group';
+  group: DiagramGroup;
+  onUpdateGroup: (id: string, changes: { label?: string; color?: NodeColor }) => void;
+};
+
 type EmptyProps = { kind: 'none' };
 
-export type PropertiesPanelInput = NodeProps | EdgeProps | EmptyProps;
+export type PropertiesPanelInput = NodeProps | EdgeProps | GroupProps | EmptyProps;
 
 const SHAPE_LABELS: Record<NodeShape, string> = {
   rectangle: 'Rectangle',
@@ -63,6 +73,10 @@ export function PropertiesPanel(props: PropertiesPanelInput) {
     return <NodePropertiesPanel {...props} />;
   }
 
+  if (props.kind === 'group') {
+    return <GroupPropertiesPanel {...props} />;
+  }
+
   return <EdgePropertiesPanel {...props} />;
 }
 
@@ -70,11 +84,11 @@ export function PropertiesPanel(props: PropertiesPanelInput) {
 // Node Properties
 // ---------------------------------------------------------------------------
 
-function NodePropertiesPanel({ node, onUpdateNode }: NodeProps) {
+function NodePropertiesPanel({ node, groups, onUpdateNode }: NodeProps) {
   const [label, setLabel] = useState(node.data.label);
   const [notes, setNotes] = useState(node.data.notes ?? '');
 
-  // Sync when a different node is selected
+  // Sync when a different node is selected.
   useEffect(() => {
     setLabel(node.data.label);
     setNotes(node.data.notes ?? '');
@@ -92,6 +106,16 @@ function NodePropertiesPanel({ node, onUpdateNode }: NodeProps) {
       onUpdateNode(node.id, { notes: notes.trim() || undefined });
     }
   }, [node.id, node.data.notes, notes, onUpdateNode]);
+
+  const currentGroup = (node as any).parentId ?? null;
+
+  const handleGroupChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = e.target.value;
+      onUpdateNode(node.id, { group: value === '' ? null : value });
+    },
+    [node.id, onUpdateNode],
+  );
 
   return (
     <aside className="properties-panel" data-testid="properties-panel">
@@ -143,6 +167,26 @@ function NodePropertiesPanel({ node, onUpdateNode }: NodeProps) {
         </div>
       </div>
 
+      {groups.length > 0 && (
+        <div className="prop-group">
+          <label className="prop-label" htmlFor="prop-node-group">Group</label>
+          <select
+            id="prop-node-group"
+            className="prop-select"
+            value={currentGroup ?? ''}
+            onChange={handleGroupChange}
+            data-testid="prop-node-group"
+          >
+            <option value="">(none)</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div className="prop-group">
         <label className="prop-label" htmlFor="prop-notes">Notes</label>
         <textarea
@@ -155,6 +199,60 @@ function NodePropertiesPanel({ node, onUpdateNode }: NodeProps) {
           placeholder="Optional notes for this node…"
           data-testid="prop-node-notes"
         />
+      </div>
+    </aside>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Group Properties
+// ---------------------------------------------------------------------------
+
+function GroupPropertiesPanel({ group, onUpdateGroup }: GroupProps) {
+  const [label, setLabel] = useState(group.label);
+
+  useEffect(() => {
+    setLabel(group.label);
+  }, [group.id, group.label]);
+
+  const commitLabel = useCallback(() => {
+    const trimmed = label.trim();
+    if (trimmed && trimmed !== group.label) {
+      onUpdateGroup(group.id, { label: trimmed });
+    }
+  }, [group.id, group.label, label, onUpdateGroup]);
+
+  return (
+    <aside className="properties-panel" data-testid="properties-panel">
+      <h3 className="properties-panel__title">Group Properties</h3>
+
+      <div className="prop-group">
+        <label className="prop-label" htmlFor="prop-group-label">Label</label>
+        <input
+          id="prop-group-label"
+          className="prop-input"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          onBlur={commitLabel}
+          onKeyDown={(e) => { if (e.key === 'Enter') commitLabel(); }}
+          data-testid="prop-group-label"
+        />
+      </div>
+
+      <div className="prop-group">
+        <span className="prop-label">Color</span>
+        <div className="prop-color-grid" data-testid="prop-group-color">
+          {NODE_COLORS.map((c) => (
+            <button
+              key={c}
+              className={`prop-color-swatch color-swatch--${c}${(group.color ?? 'default') === c ? ' prop-color-swatch--active' : ''}`}
+              onClick={() => onUpdateGroup(group.id, { color: c })}
+              title={COLOR_LABELS[c]}
+              data-testid={`prop-group-color-${c}`}
+              aria-label={COLOR_LABELS[c]}
+            />
+          ))}
+        </div>
       </div>
     </aside>
   );

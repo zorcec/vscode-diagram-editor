@@ -2,6 +2,7 @@ import { useReactFlow } from '@xyflow/react';
 
 type ToolbarProps = {
   onAddNode: () => void;
+  onAddGroup: () => void;
   onAutoLayout: () => void;
   onExportSvg: () => void;
   onExportPng: () => void;
@@ -10,6 +11,7 @@ type ToolbarProps = {
 
 export function Toolbar({
   onAddNode,
+  onAddGroup,
   onAutoLayout,
   onExportSvg,
   onExportPng,
@@ -27,6 +29,14 @@ export function Toolbar({
           className="toolbar-btn"
         >
           + Node
+        </button>
+        <button
+          onClick={onAddGroup}
+          title="Add Group (G)"
+          data-testid="btn-add-group"
+          className="toolbar-btn"
+        >
+          ⬡ Group
         </button>
       </div>
       <div className="toolbar-group">

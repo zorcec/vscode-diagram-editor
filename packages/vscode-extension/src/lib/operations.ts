@@ -2,6 +2,7 @@ import type {
   DiagramDocument,
   DiagramNode,
   DiagramEdge,
+  DiagramGroup,
 } from '../types/DiagramDocument';
 import {
   DEFAULT_NODE_WIDTH,
@@ -66,6 +67,12 @@ function applySingleOp(
       return removeEdge(doc, op.id);
     case 'update_edge':
       return updateEdge(doc, op.id, op.changes);
+    case 'add_group':
+      return addGroup(doc, op.group, generateId);
+    case 'remove_group':
+      return removeGroup(doc, op.id);
+    case 'update_group':
+      return updateGroup(doc, op.id, op.changes);
   }
 }
 
@@ -207,5 +214,60 @@ function updateEdge(
 
   const modified = structuredClone(doc);
   Object.assign(modified.edges[edgeIndex], changes);
+  return { success: true, document: modified };
+}
+
+// ---------------------------------------------------------------------------
+// Group operations
+// ---------------------------------------------------------------------------
+
+function addGroup(
+  doc: DiagramDocument,
+  partial: Partial<DiagramGroup> & { label: string },
+  generateId: () => string,
+): OpResult {
+  const group: DiagramGroup = {
+    id: partial.id ?? generateId(),
+    label: partial.label,
+    ...(partial.color ? { color: partial.color } : {}),
+    ...(partial.x !== undefined ? { x: partial.x } : {}),
+    ...(partial.y !== undefined ? { y: partial.y } : {}),
+  };
+
+  const modified = structuredClone(doc);
+  if (!modified.groups) modified.groups = [];
+  modified.groups.push(group);
+  return { success: true, document: modified };
+}
+
+function removeGroup(doc: DiagramDocument, id: string): OpResult {
+  const exists = doc.groups?.some((g) => g.id === id);
+  if (!exists) {
+    return { success: false, error: `Group "${id}" not found` };
+  }
+
+  const modified = structuredClone(doc);
+  modified.groups = modified.groups!.filter((g) => g.id !== id);
+  // Detach nodes from the removed group.
+  for (const node of modified.nodes) {
+    if (node.group === id) {
+      node.group = undefined;
+    }
+  }
+  return { success: true, document: modified };
+}
+
+function updateGroup(
+  doc: DiagramDocument,
+  id: string,
+  changes: Partial<Omit<DiagramGroup, 'id'>>,
+): OpResult {
+  const groupIndex = doc.groups?.findIndex((g) => g.id === id) ?? -1;
+  if (groupIndex === -1) {
+    return { success: false, error: `Group "${id}" not found` };
+  }
+
+  const modified = structuredClone(doc);
+  Object.assign(modified.groups![groupIndex], changes);
   return { success: true, document: modified };
 }

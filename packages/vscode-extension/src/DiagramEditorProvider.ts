@@ -84,20 +84,13 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
         break; // handled in resolveCustomTextEditor closure
 
       case 'NODE_DRAGGED':
-        await this.diagramService.applySemanticOps(
-          [
-            {
-              op: 'update_node',
-              id: msg.id,
-              changes: {
-                x: Math.round(msg.position.x),
-                y: Math.round(msg.position.y),
-                pinned: true,
-              },
-            },
-          ],
-          document,
-        );
+        // Use moveNode to always update position regardless of pinned status
+        // (pinned means layout engine won't move it, not that the user can't).
+        await this.diagramService.moveNode(msg.id, msg.position, document);
+        break;
+
+      case 'GROUP_DRAGGED':
+        await this.diagramService.moveGroup(msg.id, msg.position, document);
         break;
 
       case 'NODE_RESIZED':
@@ -130,6 +123,27 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
         );
         break;
 
+      case 'ADD_GROUP':
+        await this.diagramService.applySemanticOps(
+          [{ op: 'add_group', group: { label: msg.label } }],
+          document,
+        );
+        break;
+
+      case 'DELETE_GROUPS':
+        await this.diagramService.applySemanticOps(
+          msg.groupIds.map((id) => ({ op: 'remove_group' as const, id })),
+          document,
+        );
+        break;
+
+      case 'UPDATE_GROUP_PROPS':
+        await this.diagramService.applySemanticOps(
+          [{ op: 'update_group', id: msg.id, changes: msg.changes }],
+          document,
+        );
+        break;
+
       case 'ADD_EDGE':
         await this.diagramService.applySemanticOps(
           [{ op: 'add_edge', edge: msg.edge }],
@@ -151,12 +165,18 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
         );
         break;
 
-      case 'UPDATE_NODE_PROPS':
+      case 'UPDATE_NODE_PROPS': {
+        const { group, ...rest } = msg.changes;
+        const changes: any = { ...rest };
+        if (group !== undefined) {
+          changes.group = group === null ? undefined : group;
+        }
         await this.diagramService.applySemanticOps(
-          [{ op: 'update_node', id: msg.id, changes: msg.changes }],
+          [{ op: 'update_node', id: msg.id, changes }],
           document,
         );
         break;
+      }
 
       case 'UPDATE_EDGE_PROPS':
         await this.diagramService.applySemanticOps(

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   useNodesState,
   useEdgesState,
@@ -8,17 +8,34 @@ import {
   type OnNodesChange,
   type OnEdgesChange,
 } from '@xyflow/react';
-import { docToFlowNodes, docToFlowEdges, type DiagramNodeData, type DiagramEdgeData } from '../lib/docToFlow';
+import {
+  docToFlowNodes,
+  docToFlowEdges,
+  docToFlowGroupNodes,
+  type DiagramNodeData,
+  type DiagramEdgeData,
+  type DiagramGroupNodeData,
+} from '../lib/docToFlow';
 import { buildExportSvg, rasterizeSvgToPng } from '../lib/exportSvg';
-import type { DiagramDocument, NodeShape, NodeColor, EdgeStyle, ArrowType } from '../../types/DiagramDocument';
+import type {
+  DiagramDocument,
+  DiagramGroup,
+  NodeShape,
+  NodeColor,
+  EdgeStyle,
+  ArrowType,
+} from '../../types/DiagramDocument';
 import type { VSCodeBridge } from './useVSCodeBridge';
 
 export type GraphState = {
   nodes: Node<DiagramNodeData>[];
+  allNodes: Node[];
   edges: Edge<DiagramEdgeData>[];
+  groups: DiagramGroup[];
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
-  onNodesChange: OnNodesChange<Node<DiagramNodeData>>;
+  selectedGroupId: string | null;
+  onNodesChange: OnNodesChange<Node>;
   onEdgesChange: OnEdgesChange<Edge<DiagramEdgeData>>;
   onNodeDragStop: (_event: React.MouseEvent, node: Node) => void;
   onConnect: (connection: Connection) => void;
@@ -26,9 +43,23 @@ export type GraphState = {
   onEdgesDelete: (deleted: Edge[]) => void;
   onSelectionChange: (params: { nodes: Node[]; edges: Edge[] }) => void;
   onAddNode: () => void;
+  onAddGroup: () => void;
   onNodeLabelChange: (id: string, label: string) => void;
-  onUpdateNodeProps: (id: string, changes: { label?: string; shape?: NodeShape; color?: NodeColor; notes?: string }) => void;
-  onUpdateEdgeProps: (id: string, changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean }) => void;
+  onUpdateNodeProps: (
+    id: string,
+    changes: {
+      label?: string;
+      shape?: NodeShape;
+      color?: NodeColor;
+      notes?: string;
+      group?: string | null;
+    },
+  ) => void;
+  onUpdateEdgeProps: (
+    id: string,
+    changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean },
+  ) => void;
+  onUpdateGroupProps: (id: string, changes: { label?: string; color?: NodeColor }) => void;
   onRequestLayout: () => void;
   onExportSvg: () => void;
   onExportPng: () => void;
@@ -39,43 +70,85 @@ export function useGraphState(
   doc: DiagramDocument | null,
   bridge: VSCodeBridge,
 ): GraphState {
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<DiagramNodeData>>([]);
+  const [allNodes, setAllNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<DiagramEdgeData>>([]);
   const lastDocHashRef = useRef<string>('');
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<DiagramGroup[]>([]);
 
   useEffect(() => {
     if (!doc) return;
     const docHash = JSON.stringify(doc);
     if (docHash === lastDocHashRef.current) return;
     lastDocHashRef.current = docHash;
-    setNodes(docToFlowNodes(doc));
+
+    const groupNodes = docToFlowGroupNodes(doc);
+    const regularNodes = docToFlowNodes(doc);
+    // Group nodes first so they render behind regular nodes (lower z-index).
+    setAllNodes([...groupNodes, ...regularNodes]);
     setEdges(docToFlowEdges(doc));
-  }, [doc, setNodes, setEdges]);
+    setGroups(doc.groups ?? []);
+  }, [doc, setAllNodes, setEdges]);
+
+  // Regular (non-group) nodes, used by PropertiesPanel.
+  const nodes = useMemo(
+    () =>
+      allNodes.filter(
+        (n): n is Node<DiagramNodeData> => n.type === 'diagramNode',
+      ),
+    [allNodes],
+  );
 
   const onSelectionChange = useCallback(
     ({ nodes: selNodes, edges: selEdges }: { nodes: Node[]; edges: Edge[] }) => {
-      const nodeId = selNodes.length === 1 ? selNodes[0].id : null;
-      const edgeId = selEdges.length === 1 && selNodes.length === 0 ? selEdges[0].id : null;
-      setSelectedNodeId(nodeId);
-      setSelectedEdgeId(edgeId);
+      const groupNode = selNodes.find((n) => n.type === 'diagramGroup') ?? null;
+      const regularNodes = selNodes.filter((n) => n.type !== 'diagramGroup');
+
+      setSelectedGroupId(groupNode?.id ?? null);
+      setSelectedNodeId(regularNodes.length === 1 ? regularNodes[0].id : null);
+      setSelectedEdgeId(
+        selEdges.length === 1 && regularNodes.length === 0 ? selEdges[0].id : null,
+      );
     },
-    [setSelectedNodeId, setSelectedEdgeId],
+    [],
   );
 
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, node: Node) => {
+      if (node.type === 'diagramGroup') {
+        bridge.postMessage({
+          type: 'GROUP_DRAGGED',
+          id: node.id,
+          position: {
+            x: Math.round(node.position.x),
+            y: Math.round(node.position.y),
+          },
+        });
+        return;
+      }
+
+      // For regular nodes (including those inside a group), compute and send the
+      // absolute position. React Flow reports child positions relative to the parent.
+      let absX = Math.round(node.position.x);
+      let absY = Math.round(node.position.y);
+
+      if (node.parentId) {
+        const parent = allNodes.find((n) => n.id === node.parentId);
+        if (parent) {
+          absX += Math.round(parent.position.x);
+          absY += Math.round(parent.position.y);
+        }
+      }
+
       bridge.postMessage({
         type: 'NODE_DRAGGED',
         id: node.id,
-        position: {
-          x: Math.round(node.position.x),
-          y: Math.round(node.position.y),
-        },
+        position: { x: absX, y: absY },
       });
     },
-    [bridge],
+    [bridge, allNodes],
   );
 
   const onConnect = useCallback(
@@ -90,10 +163,19 @@ export function useGraphState(
 
   const onNodesDelete = useCallback(
     (deleted: Node[]) => {
-      bridge.postMessage({
-        type: 'DELETE_NODES',
-        nodeIds: deleted.map((n) => n.id),
-      });
+      const nodeIds = deleted
+        .filter((n) => n.type !== 'diagramGroup')
+        .map((n) => n.id);
+      const groupIds = deleted
+        .filter((n) => n.type === 'diagramGroup')
+        .map((n) => n.id);
+
+      if (nodeIds.length > 0) {
+        bridge.postMessage({ type: 'DELETE_NODES', nodeIds });
+      }
+      if (groupIds.length > 0) {
+        bridge.postMessage({ type: 'DELETE_GROUPS', groupIds });
+      }
     },
     [bridge],
   );
@@ -115,6 +197,10 @@ export function useGraphState(
     });
   }, [bridge]);
 
+  const onAddGroup = useCallback(() => {
+    bridge.postMessage({ type: 'ADD_GROUP', label: 'New Group' });
+  }, [bridge]);
+
   const onNodeLabelChange = useCallback(
     (id: string, label: string) => {
       bridge.postMessage({ type: 'UPDATE_NODE_LABEL', id, label });
@@ -123,15 +209,34 @@ export function useGraphState(
   );
 
   const onUpdateNodeProps = useCallback(
-    (id: string, changes: { label?: string; shape?: NodeShape; color?: NodeColor; notes?: string }) => {
+    (
+      id: string,
+      changes: {
+        label?: string;
+        shape?: NodeShape;
+        color?: NodeColor;
+        notes?: string;
+        group?: string | null;
+      },
+    ) => {
       bridge.postMessage({ type: 'UPDATE_NODE_PROPS', id, changes });
     },
     [bridge],
   );
 
   const onUpdateEdgeProps = useCallback(
-    (id: string, changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean }) => {
+    (
+      id: string,
+      changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean },
+    ) => {
       bridge.postMessage({ type: 'UPDATE_EDGE_PROPS', id, changes });
+    },
+    [bridge],
+  );
+
+  const onUpdateGroupProps = useCallback(
+    (id: string, changes: { label?: string; color?: NodeColor }) => {
+      bridge.postMessage({ type: 'UPDATE_GROUP_PROPS', id, changes });
     },
     [bridge],
   );
@@ -160,9 +265,12 @@ export function useGraphState(
 
   return {
     nodes,
+    allNodes,
     edges,
+    groups,
     selectedNodeId,
     selectedEdgeId,
+    selectedGroupId,
     onNodesChange,
     onEdgesChange,
     onNodeDragStop,
@@ -171,13 +279,14 @@ export function useGraphState(
     onEdgesDelete,
     onSelectionChange,
     onAddNode,
+    onAddGroup,
     onNodeLabelChange,
     onUpdateNodeProps,
     onUpdateEdgeProps,
+    onUpdateGroupProps,
     onRequestLayout,
     onExportSvg,
     onExportPng,
     onOpenSvg,
   };
 }
-

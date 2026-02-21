@@ -118,6 +118,16 @@ export interface DiagramGroup {
   id: string;
   label: string;
   color?: NodeColor;
+  /**
+   * Absolute X coordinate of the group container's top-left corner (including padding).
+   * Set on first drag; computed from children's bounding box when absent.
+   */
+  x?: number;
+  /**
+   * Absolute Y coordinate of the group container's top-left corner (including padding + label).
+   * Set on first drag; computed from children's bounding box when absent.
+   */
+  y?: number;
 }
 
 export interface DiagramMeta {
@@ -281,3 +291,12 @@ export const NODE_COLORS: readonly NodeColor[] = [
 
 export const DEFAULT_NODE_WIDTH = 160;
 export const DEFAULT_NODE_HEIGHT = 48;
+
+/** Horizontal/vertical padding between group border and child nodes. */
+export const GROUP_PADDING = 32;
+/** Extra vertical space at the top of the group container reserved for the label. */
+export const GROUP_LABEL_HEIGHT = 28;
+/** Minimum width for an empty group container. */
+export const GROUP_MIN_WIDTH = 220;
+/** Minimum height for an empty group container. */
+export const GROUP_MIN_HEIGHT = 120;

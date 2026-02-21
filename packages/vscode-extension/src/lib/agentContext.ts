@@ -21,7 +21,8 @@ const USAGE_HINT =
   'When the DiagramFlow VS Code extension is installed, use the ' +
   'diagramflow_getDiagram / diagramflow_addNodes / diagramflow_addEdges / ' +
   'diagramflow_updateNodes / diagramflow_updateEdges / diagramflow_removeNodes / ' +
-  'diagramflow_removeEdges tools to read and modify this diagram programmatically.';
+  'diagramflow_removeEdges / diagramflow_addGroups / diagramflow_updateGroups / ' +
+  'diagramflow_removeGroups tools to read and modify this diagram programmatically.';
 
 /** Generates a new {@link AgentContext} from the current diagram state. */
 export function generateAgentContext(doc: DiagramDocument): AgentContext {
