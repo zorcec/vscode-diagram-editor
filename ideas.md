@@ -34,7 +34,7 @@
 
 ---
 
-## Feature Ideas Derived From Research
+## Feature Ideas Derived From Research [IMPLEMNT]
 
 ### 1. Node Resizing (Groups & Regular Nodes)
 **Priority: High**
@@ -49,7 +49,7 @@ Spec:
 
 ---
 
-### 2. Edge Reconnection
+### 2. Edge Reconnection [IMPLEMENT]
 **Priority: High**
 Setting reconnectable on edge components lets users drag endpoints to reconnect edges. This is a purely declarative feature.
 
@@ -61,7 +61,7 @@ Spec:
 
 ---
 
-### 3. Undo / Redo
+### 3. Undo / Redo [IMPLEMENT]
 **Priority: High**
 ReactFlow does not ship undo/redo built-in but provides the state primitives to build it. The extension already has a clean document model, making a history stack straightforward.
 
@@ -74,7 +74,7 @@ Spec:
 
 ---
 
-### 4. Copy / Paste Nodes
+### 4. Copy / Paste Nodes [IMPLEMENT]
 **Priority: Medium**
 Standard clipboard UX expected in any visual editor.
 
@@ -86,7 +86,7 @@ Spec:
 
 ---
 
-### 5. Connection Validation (isValidConnection)
+### 5. Connection Validation (isValidConnection) [SKIP]
 **Priority: Medium**
 Prevent invalid edges before they are created (e.g. self-loops, duplicate edges).
 
@@ -97,7 +97,7 @@ Spec:
 
 ---
 
-### 6. Box-Select (Selection on Drag)
+### 6. Box-Select (Selection on Drag) [SKIP]
 **Priority: Medium**
 Enable built-in drag-to-select rectangle when user holds Shift and drags on empty canvas.
 
@@ -119,7 +119,7 @@ Spec:
 
 ---
 
-### 8. Directional Handles on Nodes
+### 8. Directional Handles on Nodes [IMPLEMENT]
 **Priority: Low**
 Adding four directional handles (top/right/bottom/left) gives users control over which side edges originate/terminate.
 
@@ -133,7 +133,7 @@ Spec:
 
 ## Ideas from Implementation Experience
 
-### 9. Panning Help Tooltip / Hint
+### 9. Panning Help Tooltip / Hint [IMPLEMENT]
 **Priority: Low**
 With `selectionOnDrag` enabled, left-click drag now creates a selection rectangle and right-click drag pans. New users may not know about right-click-to-pan. A first-run overlay or status bar hint ("Drag to select • Right-drag or scroll to pan") would help discoverability.
 
@@ -143,7 +143,7 @@ Spec:
 
 ---
 
-### 10. Keyboard Shortcuts Panel
+### 10. Keyboard Shortcuts Panel [IMPLEMENT]
 **Priority: Low**
 The extension already has several keyboard shortcuts (N = add node, G = add group, L = layout, Delete = remove). A discoverable shortcuts panel would help new users.
 
@@ -153,7 +153,7 @@ Spec:
 
 ---
 
-### 11. Auto-Layout Direction Toggle
+### 11. Auto-Layout Direction Toggle [IMPLEMENT]
 **Priority: Medium**
 The auto-layout currently uses top-to-bottom (TB) direction matching the sarah-ai architecture style. Some diagrams (left-to-right pipelines, swimlane diagrams) naturally flow LR. A toolbar button or `LayoutConfig` option to select direction before triggering layout would give users more control.
 
@@ -161,10 +161,11 @@ Spec:
 - Add `LayoutDirection` to toolbar (TB/LR toggle, or a dropdown with TB/LR/BT/RL)
 - Pass selected direction to `REQUEST_LAYOUT` message and on to `computeFullLayout`
 - Persist last-used direction in diagram `meta` (already has extension point in DiagramDocument)
+- Integrate in nicely into the layout button UI (e.g. a split button with direction options)
 
 ---
 
-### 12. Fit View After Auto-Layout
+### 12. Fit View After Auto-Layout [IMPLEMENT]
 **Priority: Medium**
 After triggering auto-layout (`L`), the nodes may shift far from the current viewport. Automatically calling `fitView()` after layout completes ensures users always see the result.
 
@@ -174,7 +175,7 @@ Spec:
 
 ---
 
-### 13. Node Search / Filter
+### 13. Node Search / Filter [IMPLEMENT]
 **Priority: Medium**
 In large diagrams finding a specific node by label requires scrolling. A search bar that highlights matching nodes and pans/zooms to them would significantly improve usability for complex diagrams.
 
@@ -186,7 +187,7 @@ Spec:
 
 ---
 
-### 14. Sticky Notes / Annotations
+### 14. Sticky Notes / Annotations [IMPLEMENT]
 **Priority: Low**
 Free-form text annotations (sticky note style) help users add explanatory text near diagram sections without connecting it to a node.
 
@@ -198,7 +199,7 @@ Spec:
 
 ---
 
-### 15. Collapse / Expand Groups
+### 15. Collapse / Expand Groups [IMPLEMENT]
 **Priority: Medium**
 Groups with many children can clutter the canvas. Collapsing a group into a single representative node (showing only its label) would keep large diagrams readable.
 
