@@ -348,6 +348,181 @@ describe('validateDiagram', () => {
     const result = validateDiagram(doc);
     expect(result.valid).toBe(false);
   });
+
+  it('should reject non-object group entries', () => {
+    const doc = makeValidDoc({
+      groups: [null as any],
+    });
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('must be an object'))).toBe(true);
+  });
+
+  it('should reject viewport that is not an object', () => {
+    const doc = makeValidDoc();
+    (doc as any).viewport = 'bad';
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('viewport must be an object'))).toBe(true);
+  });
+
+  it('should reject viewport with missing x/y', () => {
+    const doc = makeValidDoc();
+    (doc as any).viewport = { zoom: 1 };
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('viewport.x'))).toBe(true);
+    expect(result.errors.some((e) => e.includes('viewport.y'))).toBe(true);
+  });
+
+  it('should reject invalid meta.abstractionLevel', () => {
+    const doc = makeValidDoc();
+    (doc.meta as any).abstractionLevel = 'invalid';
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('abstractionLevel'))).toBe(true);
+  });
+
+  it('should accept valid meta.abstractionLevel values', () => {
+    for (const level of ['context', 'container', 'component']) {
+      const doc = makeValidDoc();
+      (doc.meta as any).abstractionLevel = level;
+      const result = validateDiagram(doc);
+      expect(result.valid).toBe(true);
+    }
+  });
+
+  it('should reject meta.owners that is not an array of strings', () => {
+    const doc = makeValidDoc();
+    (doc.meta as any).owners = [1, 2, 3];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('owners'))).toBe(true);
+  });
+
+  it('should accept valid meta.owners', () => {
+    const doc = makeValidDoc();
+    (doc.meta as any).owners = ['team-a', 'team-b'];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(true);
+  });
+
+  it('should reject meta.glossary that is not an object', () => {
+    const doc = makeValidDoc();
+    (doc.meta as any).glossary = [1, 2];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('glossary must be a plain object'))).toBe(true);
+  });
+
+  it('should reject meta.glossary with non-string values', () => {
+    const doc = makeValidDoc();
+    (doc.meta as any).glossary = { term: 123 };
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('glossary'))).toBe(true);
+  });
+
+  it('should accept valid meta.glossary', () => {
+    const doc = makeValidDoc();
+    (doc.meta as any).glossary = { API: 'Application Programming Interface' };
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(true);
+  });
+
+  it('should reject invalid node type', () => {
+    const doc = makeValidDoc();
+    (doc.nodes[0] as any).type = 'invalid_type';
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('type'))).toBe(true);
+  });
+
+  it('should reject node tags that are not string arrays', () => {
+    const doc = makeValidDoc();
+    (doc.nodes[0] as any).tags = [1, 2, 3];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('tags'))).toBe(true);
+  });
+
+  it('should accept valid node tags', () => {
+    const doc = makeValidDoc();
+    (doc.nodes[0] as any).tags = ['frontend', 'critical'];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(true);
+  });
+
+  it('should reject node properties that is not a plain object', () => {
+    const doc = makeValidDoc();
+    (doc.nodes[0] as any).properties = [1, 2];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('properties must be a plain object'))).toBe(true);
+  });
+
+  it('should reject invalid securityClassification', () => {
+    const doc = makeValidDoc();
+    (doc.nodes[0] as any).securityClassification = 'invalid';
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('securityClassification'))).toBe(true);
+  });
+
+  it('should reject invalid deploymentEnvironment', () => {
+    const doc = makeValidDoc();
+    (doc.nodes[0] as any).deploymentEnvironment = 'invalid';
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('deploymentEnvironment'))).toBe(true);
+  });
+
+  it('should reject edge protocol that is not a string', () => {
+    const doc = makeValidDoc();
+    (doc.edges[0] as any).protocol = 42;
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('protocol'))).toBe(true);
+  });
+
+  it('should accept valid edge protocol string', () => {
+    const doc = makeValidDoc();
+    (doc.edges[0] as any).protocol = 'HTTPS';
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(true);
+  });
+
+  it('should reject edge dataTypes that are not string arrays', () => {
+    const doc = makeValidDoc();
+    (doc.edges[0] as any).dataTypes = [1, 2];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('dataTypes'))).toBe(true);
+  });
+
+  it('should accept valid edge dataTypes', () => {
+    const doc = makeValidDoc();
+    (doc.edges[0] as any).dataTypes = ['JSON', 'XML'];
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(true);
+  });
+
+  it('should detect duplicate ids across nodes, edges, and groups', () => {
+    const doc = makeValidDoc({
+      groups: [{ id: 'node0001', label: 'Duplicate Group' }],
+    });
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('Duplicate id'))).toBe(true);
+  });
+
+  it('should detect edge id not provided', () => {
+    const doc = makeValidDoc();
+    (doc.edges[0] as any).id = '';
+    const result = validateDiagram(doc);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('id is required'))).toBe(true);
+  });
 });
 
 describe('parseDiagramJSON', () => {

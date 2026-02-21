@@ -171,4 +171,239 @@ describe('generateAgentContext', () => {
     const ctx = generateAgentContext(doc);
     expect(ctx.groupIndex[0].members).toHaveLength(0);
   });
+
+  // ── Node-level Tier-1 enrichments ──────────────────────────────────────────
+
+  it('includes node type in nodeIndex when set', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Order DB', x: 0, y: 0, width: 160, height: 48, shape: 'cylinder', color: 'default', pinned: false, type: 'Database' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.nodeIndex[0].type).toBe('Database');
+  });
+
+  it('omits type from nodeIndex when not set', () => {
+    const doc = makeDoc({
+      nodes: [{ id: 'n1', label: 'Node', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false }],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.nodeIndex[0].type).toBeUndefined();
+  });
+
+  it('includes tags in nodeIndex when set', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Legacy Gateway', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, tags: ['deprecated', 'external-facing'] },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.nodeIndex[0].tags).toEqual(['deprecated', 'external-facing']);
+  });
+
+  it('omits tags from nodeIndex when empty', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Node', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, tags: [] },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.nodeIndex[0].tags).toBeUndefined();
+  });
+
+  it('includes properties in nodeIndex when set', () => {
+    const doc = makeDoc({
+      nodes: [
+        {
+          id: 'n1', label: 'Auth Service', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false,
+          properties: { repo: 'github.com/org/auth', team: 'Security Squad', entrypoint: 'src/main.ts' },
+        },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.nodeIndex[0].properties?.repo).toBe('github.com/org/auth');
+    expect(ctx.nodeIndex[0].properties?.team).toBe('Security Squad');
+    expect(ctx.nodeIndex[0].properties?.entrypoint).toBe('src/main.ts');
+  });
+
+  it('includes securityClassification in nodeIndex when set', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'PII DB', x: 0, y: 0, width: 160, height: 48, shape: 'cylinder', color: 'default', pinned: false, securityClassification: 'pii-data-store' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.nodeIndex[0].securityClassification).toBe('pii-data-store');
+  });
+
+  it('includes deploymentEnvironment in nodeIndex when set', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Prod DB', x: 0, y: 0, width: 160, height: 48, shape: 'cylinder', color: 'default', pinned: false, deploymentEnvironment: 'production' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.nodeIndex[0].deploymentEnvironment).toBe('production');
+  });
+
+  // ── Edge-level enrichments ─────────────────────────────────────────────────
+
+  it('includes protocol in edgeIndex when set', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'a', label: 'Order Service', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+        { id: 'b', label: 'Kafka', x: 200, y: 0, width: 160, height: 48, shape: 'cylinder', color: 'default', pinned: false },
+      ],
+      edges: [{ id: 'e1', source: 'a', target: 'b', style: 'dashed', arrow: 'arrow', protocol: 'Kafka (async)' }],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.edgeIndex[0].protocol).toBe('Kafka (async)');
+  });
+
+  it('omits protocol from edgeIndex when not set', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'a', label: 'A', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+        { id: 'b', label: 'B', x: 200, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+      ],
+      edges: [{ id: 'e', source: 'a', target: 'b', style: 'solid', arrow: 'arrow' }],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.edgeIndex[0].protocol).toBeUndefined();
+  });
+
+  it('includes dataTypes in edgeIndex when set', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'a', label: 'Order Service', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+        { id: 'b', label: 'Inventory', x: 200, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+      ],
+      edges: [{ id: 'e1', source: 'a', target: 'b', style: 'solid', arrow: 'arrow', dataTypes: ['OrderDTO', 'CustomerPII'] }],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.edgeIndex[0].dataTypes).toEqual(['OrderDTO', 'CustomerPII']);
+  });
+
+  // ── Meta-level enrichments ─────────────────────────────────────────────────
+
+  it('includes glossary from meta in agentContext', () => {
+    const doc = makeDoc({
+      meta: {
+        title: 'E-Commerce',
+        created: '',
+        modified: '',
+        glossary: { fulfilment: 'Process of preparing and shipping a placed order' },
+      },
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.glossary?.fulfilment).toBe('Process of preparing and shipping a placed order');
+  });
+
+  it('omits glossary from agentContext when not set', () => {
+    const ctx = generateAgentContext(makeDoc());
+    expect(ctx.glossary).toBeUndefined();
+  });
+
+  it('includes abstractionLevel in summary when set', () => {
+    const doc = makeDoc({
+      meta: { title: 'Platform', created: '', modified: '', abstractionLevel: 'container' },
+      nodes: [{ id: 'n1', label: 'Service A', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false }],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.summary).toContain('container');
+  });
+
+  it('includes owners in summary when set', () => {
+    const doc = makeDoc({
+      meta: { title: 'Platform', created: '', modified: '', owners: ['platform-team', 'core-eng'] },
+      nodes: [{ id: 'n1', label: 'Service', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false }],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.summary).toContain('platform-team');
+    expect(ctx.summary).toContain('core-eng');
+  });
+
+  // ── Insights ───────────────────────────────────────────────────────────────
+
+  it('generates insight for deprecated node via properties.status', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Legacy API', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, properties: { status: 'deprecated' } },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights).toBeDefined();
+    expect(ctx.insights?.some((i) => i.includes('"Legacy API"') && i.includes('deprecated'))).toBe(true);
+  });
+
+  it('generates insight for being-replaced-by status', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Old Service', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, properties: { status: 'being-replaced-by:New Service' } },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights?.some((i) => i.includes('"New Service"'))).toBe(true);
+  });
+
+  it('generates insight for deprecated tag', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Old Gateway', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, tags: ['deprecated'] },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights?.some((i) => i.includes('"Old Gateway"') && i.includes('deprecated'))).toBe(true);
+  });
+
+  it('generates insight for pii-data-store securityClassification', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Customer DB', x: 0, y: 0, width: 160, height: 48, shape: 'cylinder', color: 'default', pinned: false, securityClassification: 'pii-data-store' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights?.some((i) => i.includes('"Customer DB"') && i.includes('pii-data-store'))).toBe(true);
+  });
+
+  it('generates insight for security-boundary securityClassification', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'API Gateway', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, securityClassification: 'security-boundary' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights?.some((i) => i.includes('"API Gateway"') && i.includes('security-boundary'))).toBe(true);
+  });
+
+  it('generates insight for technical debt', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Order Service', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, properties: { technicalDebt: 'Synchronous DB calls in hot path, JIRA-1234' } },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights?.some((i) => i.includes('"Order Service"') && i.includes('JIRA-1234'))).toBe(true);
+  });
+
+  it('generates insight for ADR reference', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Event Bus', x: 0, y: 0, width: 160, height: 48, shape: 'cylinder', color: 'default', pinned: false, properties: { adr: 'docs/adr/0003-use-kafka.md' } },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights?.some((i) => i.includes('"Event Bus"') && i.includes('docs/adr/0003-use-kafka.md'))).toBe(true);
+  });
+
+  it('omits insights when no special conditions exist', () => {
+    const doc = makeDoc({
+      nodes: [
+        { id: 'n1', label: 'Normal Node', x: 0, y: 0, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.insights).toBeUndefined();
+  });
 });

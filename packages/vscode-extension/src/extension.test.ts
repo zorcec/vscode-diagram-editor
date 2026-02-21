@@ -83,4 +83,80 @@ describe('extension', () => {
       expect(() => deactivate()).not.toThrow();
     });
   });
+
+  describe('command callbacks', () => {
+    function getCommandCallback(commandId: string): ((...args: any[]) => any) | undefined {
+      const calls = vi.mocked(vscode.commands.registerCommand).mock.calls;
+      const match = calls.find((c) => c[0] === commandId);
+      return match?.[1] as ((...args: any[]) => any) | undefined;
+    }
+
+    it('exportSVG command calls internal export with svg', async () => {
+      activate(context);
+      const cb = getCommandCallback('diagramflow.exportSVG');
+      expect(cb).toBeDefined();
+
+      await cb!();
+
+      expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+        'diagramflow.internal.export',
+        'svg',
+      );
+    });
+
+    it('exportMermaid command calls internal export with mermaid', async () => {
+      activate(context);
+      const cb = getCommandCallback('diagramflow.exportMermaid');
+      expect(cb).toBeDefined();
+
+      await cb!();
+
+      expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+        'diagramflow.internal.export',
+        'mermaid',
+      );
+    });
+
+    it('autoLayout command calls diagramService.autoLayoutAll', async () => {
+      activate(context);
+      const cb = getCommandCallback('diagramflow.autoLayout');
+      expect(cb).toBeDefined();
+
+      await cb!();
+
+      const { DiagramService: DS } = await import('./DiagramService');
+      const serviceInstance = vi.mocked(DS).mock.results[0]?.value;
+      expect(serviceInstance.autoLayoutAll).toHaveBeenCalled();
+    });
+
+    it('newDiagram command creates file when URI provided', async () => {
+      const saveUri = vscode.Uri.file('/new.diagram');
+      vi.mocked(vscode.window.showSaveDialog).mockResolvedValue(saveUri as any);
+
+      activate(context);
+      const cb = getCommandCallback('diagramflow.newDiagram');
+      expect(cb).toBeDefined();
+
+      await cb!();
+
+      expect(vscode.window.showSaveDialog).toHaveBeenCalled();
+      expect(vscode.workspace.fs.writeFile).toHaveBeenCalled();
+      expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+        'vscode.open',
+        saveUri,
+      );
+    });
+
+    it('newDiagram command does nothing when dialog cancelled', async () => {
+      vi.mocked(vscode.window.showSaveDialog).mockResolvedValue(undefined as any);
+
+      activate(context);
+      const cb = getCommandCallback('diagramflow.newDiagram');
+      expect(cb).toBeDefined();
+
+      await cb!();
+
+      expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+    });
+  });
 });

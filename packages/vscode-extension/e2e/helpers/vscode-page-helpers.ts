@@ -34,7 +34,7 @@ async function safePageOp<T>(
 export async function waitForWorkbench(page: Page): Promise<void> {
 	await safePageOp(page, async () => {
 		await page.waitForSelector('.monaco-workbench', { timeout: 30000 });
-		await page.waitForTimeout(2000);
+		await page.waitForTimeout(1000);
 		await dismissTrustDialog(page);
 	}, undefined);
 }

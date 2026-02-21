@@ -3,6 +3,7 @@
   "displayName": "DiagramFlow",
   "description": "Bidirectional visual diagram editor for VS Code with native GitHub Copilot integration",
   "version": "0.1.0",
+  "license": "Apache-2.0",
   "publisher": "diagramflow",
   "main": "dist/extension.js",
   "types": "dist/extension.d.ts",

@@ -106,7 +106,9 @@ export class VSCodeDesktopServer {
 
 		this.metrics.serverReadyTime = Date.now();
 
-		await new Promise(resolve => setTimeout(resolve, 3000));
+		// Brief stabilisation wait for VS Code to finish initialising after the
+		// CDP endpoint becomes available (extension host, workspace trust etc.).
+		await new Promise(resolve => setTimeout(resolve, 1000));
 
 		this.metrics.totalStartupTime = Date.now() - startTime;
 

@@ -1,6 +1,9 @@
 import type { DiagramDocument } from '../types/DiagramDocument';
 import {
   NODE_SHAPES,
+  NODE_TYPES,
+  SECURITY_CLASSIFICATIONS,
+  DEPLOYMENT_ENVIRONMENTS,
   EDGE_STYLES,
   ARROW_TYPES,
   NODE_COLORS,
@@ -45,6 +48,28 @@ function validateMeta(meta: unknown, errors: string[]): void {
   }
   if (typeof m.modified !== 'string' || m.modified.length === 0) {
     errors.push('meta.modified is required and must be a non-empty string');
+  }
+  if (m.abstractionLevel !== undefined) {
+    const validLevels = ['context', 'container', 'component'];
+    if (!validLevels.includes(m.abstractionLevel as string)) {
+      errors.push(`meta.abstractionLevel must be one of: ${validLevels.join(', ')}`);
+    }
+  }
+  if (m.owners !== undefined) {
+    if (!Array.isArray(m.owners) || (m.owners as unknown[]).some((o) => typeof o !== 'string')) {
+      errors.push('meta.owners must be an array of strings');
+    }
+  }
+  if (m.glossary !== undefined) {
+    if (typeof m.glossary !== 'object' || Array.isArray(m.glossary)) {
+      errors.push('meta.glossary must be a plain object');
+    } else {
+      for (const [k, v] of Object.entries(m.glossary as Record<string, unknown>)) {
+        if (typeof v !== 'string') {
+          errors.push(`meta.glossary["${k}"] must be a string`);
+        }
+      }
+    }
   }
 }
 
@@ -106,6 +131,28 @@ function validateNodes(
     if (typeof n.pinned !== 'boolean') {
       errors.push(`${prefix}.pinned must be a boolean`);
     }
+
+    if (n.type !== undefined && !NODE_TYPES.includes(n.type)) {
+      errors.push(`${prefix}.type must be one of: ${NODE_TYPES.join(', ')}`);
+    }
+
+    if (n.tags !== undefined) {
+      if (!Array.isArray(n.tags) || (n.tags as unknown[]).some((t) => typeof t !== 'string')) {
+        errors.push(`${prefix}.tags must be an array of strings`);
+      }
+    }
+
+    if (n.properties !== undefined && (typeof n.properties !== 'object' || Array.isArray(n.properties))) {
+      errors.push(`${prefix}.properties must be a plain object`);
+    }
+
+    if (n.securityClassification !== undefined && !SECURITY_CLASSIFICATIONS.includes(n.securityClassification)) {
+      errors.push(`${prefix}.securityClassification must be one of: ${SECURITY_CLASSIFICATIONS.join(', ')}`);
+    }
+
+    if (n.deploymentEnvironment !== undefined && !DEPLOYMENT_ENVIRONMENTS.includes(n.deploymentEnvironment)) {
+      errors.push(`${prefix}.deploymentEnvironment must be one of: ${DEPLOYMENT_ENVIRONMENTS.join(', ')}`);
+    }
   }
 
   return ids;
@@ -156,6 +203,16 @@ function validateEdges(
       errors.push(
         `${prefix}.arrow must be one of: ${ARROW_TYPES.join(', ')}`,
       );
+    }
+
+    if (e.protocol !== undefined && typeof e.protocol !== 'string') {
+      errors.push(`${prefix}.protocol must be a string`);
+    }
+
+    if (e.dataTypes !== undefined) {
+      if (!Array.isArray(e.dataTypes) || (e.dataTypes as unknown[]).some((t) => typeof t !== 'string')) {
+        errors.push(`${prefix}.dataTypes must be an array of strings`);
+      }
     }
   }
 }

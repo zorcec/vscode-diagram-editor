@@ -9,7 +9,7 @@ export default defineConfig({
   reporter: 'line',
   expect: {
     toHaveScreenshot: {
-      maxDiffPixels: 500,
+      maxDiffPixelRatio: 0.02,
       animations: 'disabled',
     },
   },

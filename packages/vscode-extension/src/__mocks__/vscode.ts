@@ -76,12 +76,16 @@ export const workspace = {
   workspaceFolders: [],
   fs: {
     writeFile: vi.fn().mockResolvedValue(undefined),
+    readFile: vi.fn().mockResolvedValue(new Uint8Array()),
   },
 };
 
 export const window = {
   registerCustomEditorProvider: vi.fn().mockReturnValue({ dispose: vi.fn() }),
   showSaveDialog: vi.fn(),
+  showOpenDialog: vi.fn(),
+  showInformationMessage: vi.fn(),
+  showErrorMessage: vi.fn(),
 };
 
 export const commands = {

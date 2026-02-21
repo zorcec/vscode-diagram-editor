@@ -432,6 +432,279 @@ describe('DiagramEditorProvider', () => {
       );
     });
 
+    it('handles ADD_NODE message', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/test.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock
+        .calls[0][0] as (msg: any) => void;
+
+      await handler({
+        type: 'ADD_NODE',
+        node: { label: 'New Node', shape: 'rectangle', color: 'blue' },
+      });
+
+      expect(service.applySemanticOps).toHaveBeenCalledWith(
+        [
+          {
+            op: 'add_node',
+            node: { label: 'New Node', shape: 'rectangle', color: 'blue' },
+          },
+        ],
+        textDoc,
+      );
+    });
+
+    it('handles DELETE_EDGES message', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/test.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock
+        .calls[0][0] as (msg: any) => void;
+
+      await handler({ type: 'DELETE_EDGES', edgeIds: ['e1', 'e2'] });
+
+      expect(service.applySemanticOps).toHaveBeenCalledWith(
+        [
+          { op: 'remove_edge', id: 'e1' },
+          { op: 'remove_edge', id: 'e2' },
+        ],
+        textDoc,
+      );
+    });
+
+    it('handles UPDATE_NODE_LABEL message', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/test.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock
+        .calls[0][0] as (msg: any) => void;
+
+      await handler({ type: 'UPDATE_NODE_LABEL', id: 'n1', label: 'Updated Label' });
+
+      expect(service.applySemanticOps).toHaveBeenCalledWith(
+        [{ op: 'update_node', id: 'n1', changes: { label: 'Updated Label' } }],
+        textDoc,
+      );
+    });
+
+    it('handles EXPORT message with SVG format', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/projects/test.diagram'),
+        lineCount: 1,
+        fsPath: '/projects/test.diagram',
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      const saveUri = vscode.Uri.file('/projects/test.svg');
+      vi.mocked(vscode.window.showSaveDialog).mockResolvedValue(saveUri as any);
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock
+        .calls[0][0] as (msg: any) => void;
+
+      await handler({ type: 'EXPORT', format: 'svg', data: '<svg>test</svg>' });
+
+      expect(vscode.window.showSaveDialog).toHaveBeenCalled();
+      expect(vscode.workspace.fs.writeFile).toHaveBeenCalled();
+    });
+
+    it('handles EXPORT message cancelled by user', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/projects/test.diagram'),
+        lineCount: 1,
+        fsPath: '/projects/test.diagram',
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      vi.mocked(vscode.window.showSaveDialog).mockResolvedValue(undefined as any);
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock
+        .calls[0][0] as (msg: any) => void;
+
+      await handler({ type: 'EXPORT', format: 'mermaid', data: 'graph LR' });
+
+      expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
+    });
+
+    it('handles OPEN_SVG_REQUEST message', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/test.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      vi.mocked(vscode.window.showOpenDialog).mockResolvedValue(undefined as any);
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock
+        .calls[0][0] as (msg: any) => void;
+
+      await handler({ type: 'OPEN_SVG_REQUEST' });
+
+      expect(vscode.window.showOpenDialog).toHaveBeenCalled();
+    });
+
+    it('sends document on WEBVIEW_READY message', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/test.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock
+        .calls[0][0] as (msg: any) => void;
+
+      vi.mocked(panel.webview.postMessage).mockClear();
+      await handler({ type: 'WEBVIEW_READY' });
+
+      expect(panel.webview.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'DOCUMENT_UPDATED' }),
+      );
+    });
+
+    it('sends document on text document change', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const docUri = vscode.Uri.file('/test.diagram');
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: docUri,
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const changeHandler = vi.mocked(vscode.workspace.onDidChangeTextDocument)
+        .mock.calls[0][0] as (e: any) => void;
+
+      vi.mocked(panel.webview.postMessage).mockClear();
+      changeHandler({ document: { uri: docUri } });
+
+      expect(panel.webview.postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'DOCUMENT_UPDATED' }),
+      );
+    });
+
+    it('ignores text changes for different document URIs', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const docUri = vscode.Uri.file('/test.diagram');
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: docUri,
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const changeHandler = vi.mocked(vscode.workspace.onDidChangeTextDocument)
+        .mock.calls[0][0] as (e: any) => void;
+
+      vi.mocked(panel.webview.postMessage).mockClear();
+      changeHandler({ document: { uri: vscode.Uri.file('/other.diagram') } });
+
+      expect(panel.webview.postMessage).not.toHaveBeenCalled();
+    });
+
     it('clears active document on dispose', async () => {
       DiagramEditorProvider.register(context, service as any);
       const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
@@ -461,6 +734,110 @@ describe('DiagramEditorProvider', () => {
       disposeHandler();
 
       expect(service.setActiveDocument).toHaveBeenCalledWith(null);
+    });
+
+    it('does not clear active document if different doc is active on dispose', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/test.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+
+      const otherDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/other.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+
+      vi.mocked(service.getActiveDocument).mockReturnValue(
+        otherDoc as unknown as any,
+      );
+
+      const panel = makeMockWebviewPanel();
+      const token = {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as unknown as vscode.CancellationToken;
+
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+
+      const disposeHandler = vi.mocked(panel.onDidDispose).mock
+        .calls[0][0] as () => void;
+
+      vi.mocked(service.setActiveDocument).mockClear();
+      disposeHandler();
+
+      expect(service.setActiveDocument).not.toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe('openSvgImportFlow', () => {
+    it('does nothing when open dialog is cancelled', async () => {
+      vi.mocked(vscode.window.showOpenDialog).mockResolvedValue(undefined as any);
+
+      await DiagramEditorProvider.openSvgImportFlow();
+
+      expect(vscode.window.showOpenDialog).toHaveBeenCalled();
+      expect(vscode.workspace.fs.readFile).not.toHaveBeenCalled();
+    });
+
+    it('shows error when SVG has no embedded diagram data', async () => {
+      const openUri = vscode.Uri.file('/test.svg');
+      vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([openUri] as any);
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        new TextEncoder().encode('<svg></svg>') as any,
+      );
+
+      await DiagramEditorProvider.openSvgImportFlow();
+
+      expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+        expect.stringContaining('No embedded .diagram source'),
+      );
+    });
+
+    it('creates .diagram file from valid SVG with embedded data', async () => {
+      const validDoc = makeValidDoc();
+      const svgContent = `<svg><metadata><diagramflow:source xmlns:diagramflow="https://diagramflow.vscode/schema">${JSON.stringify(validDoc)}</diagramflow:source></metadata></svg>`;
+
+      const openUri = vscode.Uri.file('/test.svg');
+      const saveUri = vscode.Uri.file('/imported.diagram');
+      vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([openUri] as any);
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        new TextEncoder().encode(svgContent) as any,
+      );
+      vi.mocked(vscode.window.showSaveDialog).mockResolvedValue(saveUri as any);
+
+      await DiagramEditorProvider.openSvgImportFlow();
+
+      expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(
+        saveUri,
+        expect.any(Buffer),
+      );
+      expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
+        'vscode.openWith',
+        saveUri,
+        'diagramflow.editor',
+      );
+    });
+
+    it('does nothing when save dialog is cancelled after valid SVG', async () => {
+      const validDoc = makeValidDoc();
+      const svgContent = `<svg><metadata><diagramflow:source xmlns:diagramflow="https://diagramflow.vscode/schema">${JSON.stringify(validDoc)}</diagramflow:source></metadata></svg>`;
+
+      const openUri = vscode.Uri.file('/test.svg');
+      vi.mocked(vscode.window.showOpenDialog).mockResolvedValue([openUri] as any);
+      vi.mocked(vscode.workspace.fs.readFile).mockResolvedValue(
+        new TextEncoder().encode(svgContent) as any,
+      );
+      vi.mocked(vscode.window.showSaveDialog).mockResolvedValue(undefined as any);
+
+      await DiagramEditorProvider.openSvgImportFlow();
+
+      expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled();
     });
   });
 });

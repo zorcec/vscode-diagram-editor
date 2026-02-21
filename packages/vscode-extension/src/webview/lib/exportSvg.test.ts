@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { buildExportSvg, escapeXml } from './exportSvg';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { buildExportSvg, escapeXml, rasterizeSvgToPng } from './exportSvg';
 import type { DiagramDocument } from '../../types/DiagramDocument';
 
 function makeDoc(
@@ -294,5 +294,198 @@ describe('buildExportSvg', () => {
 
     const svg = buildExportSvg(doc)!;
     expect(svg).toContain('A &amp; B &lt;C&gt;');
+  });
+
+  it('renders dotted edges', () => {
+    const doc = makeDoc({
+      nodes: [
+        {
+          id: 'n1', label: 'A', x: 0, y: 0,
+          width: 160, height: 48, shape: 'rectangle',
+          color: 'default', pinned: false,
+        },
+        {
+          id: 'n2', label: 'B', x: 300, y: 0,
+          width: 160, height: 48, shape: 'rectangle',
+          color: 'default', pinned: false,
+        },
+      ],
+      edges: [{
+        id: 'e1', source: 'n1', target: 'n2',
+        style: 'dotted', arrow: 'normal',
+      }],
+    });
+
+    const svg = buildExportSvg(doc)!;
+    expect(svg).toContain('stroke-dasharray="2,4"');
+  });
+
+  it('renders open arrow marker', () => {
+    const doc = makeDoc({
+      nodes: [
+        {
+          id: 'n1', label: 'A', x: 0, y: 0,
+          width: 160, height: 48, shape: 'rectangle',
+          color: 'default', pinned: false,
+        },
+        {
+          id: 'n2', label: 'B', x: 300, y: 0,
+          width: 160, height: 48, shape: 'rectangle',
+          color: 'default', pinned: false,
+        },
+      ],
+      edges: [{
+        id: 'e1', source: 'n1', target: 'n2',
+        style: 'solid', arrow: 'open',
+      }],
+    });
+
+    const svg = buildExportSvg(doc)!;
+    expect(svg).toContain('marker-end="url(#arrow-open)"');
+  });
+
+  it('falls back to default color for unknown node color', () => {
+    const doc = makeDoc({
+      nodes: [{
+        id: 'n1', label: 'A', x: 0, y: 0,
+        width: 160, height: 48, shape: 'rectangle',
+        color: 'unknown_color' as any, pinned: false,
+      }],
+    });
+
+    const svg = buildExportSvg(doc)!;
+    expect(svg).toContain('fill="#2d2d2d"');
+  });
+});
+
+describe('rasterizeSvgToPng', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('creates an image from SVG data and returns base64 PNG', async () => {
+    const mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn().mockReturnValue({
+        drawImage: vi.fn(),
+      }),
+      toDataURL: vi.fn().mockReturnValue('data:image/png;base64,AAAA'),
+    };
+
+    vi.stubGlobal('document', {
+      createElement: vi.fn().mockReturnValue(mockCanvas),
+    });
+
+    const mockRevokeObjectURL = vi.fn();
+    const mockCreateObjectURL = vi.fn().mockReturnValue('blob:test');
+    vi.stubGlobal('URL', {
+      createObjectURL: mockCreateObjectURL,
+      revokeObjectURL: mockRevokeObjectURL,
+    });
+    vi.stubGlobal('Blob', class MockBlob {
+      constructor(public parts: any[], public options: any) {}
+    });
+
+    let imgOnload: (() => void) | null = null;
+    const MockImage = vi.fn().mockImplementation(function (this: any) {
+      Object.defineProperty(this, 'onload', {
+        set(fn: () => void) { imgOnload = fn; },
+        get() { return imgOnload; },
+      });
+      this.naturalWidth = 1024;
+      this.naturalHeight = 768;
+      this.onerror = null;
+      this.src = '';
+    });
+    vi.stubGlobal('Image', MockImage);
+
+    const callback = vi.fn();
+    rasterizeSvgToPng('<svg>test</svg>', callback);
+
+    expect(imgOnload).toBeDefined();
+    imgOnload!();
+
+    expect(callback).toHaveBeenCalledWith('AAAA');
+    expect(mockRevokeObjectURL).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('handles error during image loading', () => {
+    const mockRevokeObjectURL = vi.fn();
+    const mockCreateObjectURL = vi.fn().mockReturnValue('blob:test');
+    vi.stubGlobal('URL', {
+      createObjectURL: mockCreateObjectURL,
+      revokeObjectURL: mockRevokeObjectURL,
+    });
+    vi.stubGlobal('Blob', class MockBlob {
+      constructor(public parts: any[], public options: any) {}
+    });
+
+    let imgOnerror: (() => void) | null = null;
+    const MockImage = vi.fn().mockImplementation(function (this: any) {
+      this.onload = null;
+      Object.defineProperty(this, 'onerror', {
+        set(fn: () => void) { imgOnerror = fn; },
+        get() { return imgOnerror; },
+      });
+      this.src = '';
+    });
+    vi.stubGlobal('Image', MockImage);
+
+    const callback = vi.fn();
+    rasterizeSvgToPng('<svg>bad</svg>', callback);
+
+    expect(imgOnerror).toBeDefined();
+    imgOnerror!();
+
+    expect(callback).not.toHaveBeenCalled();
+    expect(mockRevokeObjectURL).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+
+  it('handles missing canvas context', () => {
+    const mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: vi.fn().mockReturnValue(null),
+    };
+
+    vi.stubGlobal('document', {
+      createElement: vi.fn().mockReturnValue(mockCanvas),
+    });
+
+    const mockRevokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', {
+      createObjectURL: vi.fn().mockReturnValue('blob:test'),
+      revokeObjectURL: mockRevokeObjectURL,
+    });
+    vi.stubGlobal('Blob', class MockBlob {
+      constructor(public parts: any[], public options: any) {}
+    });
+
+    let imgOnload: (() => void) | null = null;
+    const MockImage = vi.fn().mockImplementation(function (this: any) {
+      Object.defineProperty(this, 'onload', {
+        set(fn: () => void) { imgOnload = fn; },
+        get() { return imgOnload; },
+      });
+      this.naturalWidth = 800;
+      this.naturalHeight = 600;
+      this.onerror = null;
+      this.src = '';
+    });
+    vi.stubGlobal('Image', MockImage);
+
+    const callback = vi.fn();
+    rasterizeSvgToPng('<svg>test</svg>', callback);
+    imgOnload!();
+
+    expect(callback).not.toHaveBeenCalled();
+    expect(mockRevokeObjectURL).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
   });
 });
