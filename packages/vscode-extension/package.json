@@ -1,71 +1,252 @@
 {
-  "name": "agent-watch-vscode-extension",
-  "displayName": "AgentWatch",
-  "description": "VS Code extension that runs risk-focused code review in the background while AI agents work",
-  "version": "0.0.1",
-  "publisher": "agent-watch",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/zorcec/agent-watch.git",
-    "directory": "packages/vscode-extension"
-  },
+  "name": "diagramflow-vscode-extension",
+  "displayName": "DiagramFlow",
+  "description": "Bidirectional visual diagram editor for VS Code with native GitHub Copilot integration",
+  "version": "0.1.0",
+  "publisher": "diagramflow",
   "main": "dist/extension.js",
-  "browser": "dist/extension.js",
   "types": "dist/extension.d.ts",
   "scripts": {
-    "build": "npm run check-types && esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js --sourcemap",
+    "build": "npm run check-types && node esbuild.config.mjs",
+    "build:watch": "node esbuild.config.mjs --watch",
     "check-types": "tsc --noEmit",
     "package": "npm run build && vsce package --no-dependencies",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
+    "@dagrejs/dagre": "^1.1.4",
     "@types/vscode": "^1.103.0",
-    "@vscode/vsce": "^3.0.0",
     "@vitest/coverage-v8": "^3.2.4",
-    "esbuild": "^0.19.0"
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "nanoid": "^5.0.9"
   },
   "engines": {
     "vscode": ">=1.103.0"
   },
   "categories": [
+    "Visualization",
     "Other"
   ],
   "activationEvents": [
-    "*"
+    "onCustomEditor:diagramflow.editor"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "agentWatch.arm",
-        "title": "AgentWatch: Arm / Start Watching"
+        "command": "diagramflow.newDiagram",
+        "title": "DiagramFlow: New Diagram"
       },
       {
-        "command": "agentWatch.disarm",
-        "title": "AgentWatch: Disarm / Stop Watching"
+        "command": "diagramflow.exportSVG",
+        "title": "DiagramFlow: Export as SVG"
       },
       {
-        "command": "agentWatch.clearReview",
-        "title": "AgentWatch: Clear Review"
+        "command": "diagramflow.exportMermaid",
+        "title": "DiagramFlow: Export as Mermaid"
       },
       {
-        "command": "agentWatch.triggerFinalSweep",
-        "title": "AgentWatch: Trigger Final Sweep"
+        "command": "diagramflow.autoLayout",
+        "title": "DiagramFlow: Auto Layout"
       },
       {
-        "command": "agentWatch.editInstructions",
-        "title": "AgentWatch: Edit Instructions"
+        "command": "diagramflow.importSVG",
+        "title": "DiagramFlow: Import SVG"
       }
     ],
-    "keybindings": [
+    "customEditors": [
       {
-        "command": "agentWatch.arm",
-        "key": "ctrl+shift+b",
-        "mac": "cmd+shift+b"
+        "viewType": "diagramflow.editor",
+        "displayName": "Diagram Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.diagram"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "languages": [
+      {
+        "id": "diagram",
+        "extensions": [".diagram"],
+        "aliases": ["Diagram"]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "diagramflow_getDiagram",
+        "tags": ["diagram", "diagramflow", "visualization"],
+        "toolReferenceName": "getDiagram",
+        "displayName": "Get Diagram",
+        "modelDescription": "Reads the currently open .diagram file and returns its full JSON representation including all nodes (with id, label, shape, color, position, pinned status), edges (with id, source, target, label, style), and groups. Use this to understand the current state of a diagram before making modifications.",
+        "userDescription": "Read the current diagram's nodes, edges, and layout.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(eye)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
       },
       {
-        "command": "agentWatch.triggerFinalSweep",
-        "key": "ctrl+shift+r",
-        "mac": "cmd+shift+r"
+        "name": "diagramflow_addNodes",
+        "tags": ["diagram", "diagramflow"],
+        "toolReferenceName": "addNodes",
+        "displayName": "Add Diagram Nodes",
+        "modelDescription": "Adds one or more nodes to the currently open .diagram file. Each node requires a label and optionally accepts shape, color, and notes. Nodes are auto-positioned by the layout engine. Do NOT specify x, y, or id.",
+        "userDescription": "Add new nodes to the diagram.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(add)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["nodes"],
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["label"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "shape": { "type": "string", "enum": ["rectangle", "rounded", "diamond", "cylinder"] },
+                  "color": { "type": "string", "enum": ["default", "blue", "green", "red", "yellow", "purple", "gray"] },
+                  "notes": { "type": "string" },
+                  "group": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_removeNodes",
+        "tags": ["diagram", "diagramflow"],
+        "toolReferenceName": "removeNodes",
+        "displayName": "Remove Diagram Nodes",
+        "modelDescription": "Removes one or more nodes from the currently open .diagram file by their ids. Also removes all connected edges. Use getDiagram first to find node ids.",
+        "userDescription": "Remove nodes from the diagram by id.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(trash)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["nodeIds"],
+          "properties": {
+            "nodeIds": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_updateNodes",
+        "tags": ["diagram", "diagramflow"],
+        "toolReferenceName": "updateNodes",
+        "displayName": "Update Diagram Nodes",
+        "modelDescription": "Updates properties of existing nodes. Each update requires the node id. Updatable: label, shape, color, notes, group. Position changes only apply to unpinned nodes.",
+        "userDescription": "Update properties of existing diagram nodes.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(edit)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["updates"],
+          "properties": {
+            "updates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "label": { "type": "string" },
+                  "shape": { "type": "string", "enum": ["rectangle", "rounded", "diamond", "cylinder"] },
+                  "color": { "type": "string", "enum": ["default", "blue", "green", "red", "yellow", "purple", "gray"] },
+                  "notes": { "type": "string" },
+                  "group": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_addEdges",
+        "tags": ["diagram", "diagramflow"],
+        "toolReferenceName": "addEdges",
+        "displayName": "Add Diagram Edges",
+        "modelDescription": "Adds edges between existing nodes. Each edge requires source and target node ids. Optional: label, style, arrow, animated.",
+        "userDescription": "Add edges between diagram nodes.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(git-merge)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["edges"],
+          "properties": {
+            "edges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["source", "target"],
+                "properties": {
+                  "source": { "type": "string" },
+                  "target": { "type": "string" },
+                  "label": { "type": "string" },
+                  "style": { "type": "string", "enum": ["solid", "dashed", "dotted"] },
+                  "arrow": { "type": "string", "enum": ["arrow", "open", "none"] },
+                  "animated": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_removeEdges",
+        "tags": ["diagram", "diagramflow"],
+        "toolReferenceName": "removeEdges",
+        "displayName": "Remove Diagram Edges",
+        "modelDescription": "Removes edges by their ids. Use getDiagram first to find edge ids.",
+        "userDescription": "Remove edges from the diagram by id.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(trash)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["edgeIds"],
+          "properties": {
+            "edgeIds": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_updateEdges",
+        "tags": ["diagram", "diagramflow"],
+        "toolReferenceName": "updateEdges",
+        "displayName": "Update Diagram Edges",
+        "modelDescription": "Updates properties of existing edges. Each update requires the edge id. Updatable: label, style, arrow, animated, source, target.",
+        "userDescription": "Update properties of existing diagram edges.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(edit)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["updates"],
+          "properties": {
+            "updates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "label": { "type": "string" },
+                  "style": { "type": "string", "enum": ["solid", "dashed", "dotted"] },
+                  "arrow": { "type": "string", "enum": ["arrow", "open", "none"] },
+                  "animated": { "type": "boolean" },
+                  "source": { "type": "string" },
+                  "target": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
       }
     ]
   }

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:diagramflow="https://diagramflow.vscode/schema" width="640" height="128" viewBox="-40 -40 640 128">
+  <metadata>
+    <diagramflow:source xmlns:diagramflow="https://diagramflow.vscode/schema">{"meta":{"version":"1.0","title":"Simple Test Diagram","created":"2025-01-01T00:00:00Z","modified":"2025-01-01T00:00:00Z"},"nodes":[{"id":"n1","label":"Start","shape":"rectangle","color":"green","x":40,"y":40,"width":160,"height":48,"pinned":true},{"id":"n2","label":"Process","shape":"rectangle","color":"default","x":280,"y":40,"width":160,"height":48,"pinned":true},{"id":"n3","label":"End","shape":"rectangle","color":"red","x":520,"y":40,"width":160,"height":48,"pinned":true}],"edges":[{"id":"e1","source":"n1","target":"n2","label":"next","style":"solid","arrow":"normal"},{"id":"e2","source":"n2","target":"n3","label":"done","style":"solid","arrow":"normal"}],"groups":[]}</diagramflow:source>
+  </metadata>
+  <rect width="100%" height="100%" fill="#1e1e1e"/>
+  <g id="edge-layer">
+    <g data-testid="edge-e1">
+      <line x1="120" y1="64" x2="360" y2="64" stroke="#888" stroke-width="2" stroke-dasharray="none" marker-end="url(#arrow-normal)"/>
+      <text x="240" y="58" text-anchor="middle" fill="#aaa" font-size="11" font-family="sans-serif">next</text>
+    </g>
+    <g data-testid="edge-e2">
+      <line x1="360" y1="64" x2="600" y2="64" stroke="#888" stroke-width="2" stroke-dasharray="none" marker-end="url(#arrow-normal)"/>
+      <text x="480" y="58" text-anchor="middle" fill="#aaa" font-size="11" font-family="sans-serif">done</text>
+    </g>
+  </g>
+  <g id="node-layer">
+    <g class="diagram-node" data-id="n1" data-testid="node-n1" transform="translate(40,40)">
+      <rect width="160" height="48" rx="4" ry="4" fill="#1a3a1a" stroke="#4a9a4a" stroke-width="2"/>
+      <text x="80" y="25" text-anchor="middle" dominant-baseline="middle" fill="#90d490" font-size="13" font-family="sans-serif" pointer-events="none">Start</text>
+    </g>
+    <g class="diagram-node" data-id="n2" data-testid="node-n2" transform="translate(280,40)">
+      <rect width="160" height="48" rx="4" ry="4" fill="#2d2d2d" stroke="#555" stroke-width="2"/>
+      <text x="80" y="25" text-anchor="middle" dominant-baseline="middle" fill="#ccc" font-size="13" font-family="sans-serif" pointer-events="none">Process</text>
+    </g>
+    <g class="diagram-node" data-id="n3" data-testid="node-n3" transform="translate(520,40)">
+      <rect width="160" height="48" rx="4" ry="4" fill="#3a1a1a" stroke="#c84040" stroke-width="2"/>
+      <text x="80" y="25" text-anchor="middle" dominant-baseline="middle" fill="#f09090" font-size="13" font-family="sans-serif" pointer-events="none">End</text>
+    </g>
+  </g>
+</svg>

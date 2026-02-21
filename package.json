@@ -1,5 +1,5 @@
 {
-  "name": "agent-watch-monorepo",
+  "name": "diagramflow-monorepo",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -9,6 +9,7 @@
     "package": "npm run package --workspace packages/vscode-extension",
     "test": "vitest run --exclude '**/e2e/**'",
     "test:watch": "vitest --exclude '**/e2e/**'",
+    "test:coverage": "vitest run --exclude '**/e2e/**' --coverage",
     "e2e": "npm run build && xvfb-run -a npx playwright test",
     "e2e:headed": "npm run build && npx playwright test --headed"
   },

@@ -1,180 +1,86 @@
-/**
- * AgentWatch Extension - Unit Tests
- *
- * Unit tests for the extension activation and commands.
- */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('vscode', () => {
-  const mockStatusBarItem = {
-    text: '',
-    tooltip: '',
-    command: '',
-    backgroundColor: undefined,
-    show: vi.fn(),
-    dispose: vi.fn(),
-  };
-
-  const mockDiagnosticCollection = {
-    set: vi.fn(),
-    clear: vi.fn(),
-    dispose: vi.fn(),
-  };
-
-  const mockDecorationType = {
-    dispose: vi.fn(),
-  };
-
-  return {
-    window: {
-      showInformationMessage: vi.fn(),
-      showWarningMessage: vi.fn(),
-      showErrorMessage: vi.fn(),
-      createStatusBarItem: vi.fn(() => mockStatusBarItem),
-      createOutputChannel: vi.fn(() => ({
-        appendLine: vi.fn(),
-        dispose: vi.fn(),
-      })),
-      createTextEditorDecorationType: vi.fn(() => mockDecorationType),
-      createWebviewPanel: vi.fn(() => ({
-        webview: { html: '' },
-        dispose: vi.fn(),
-      })),
-      showTextDocument: vi.fn().mockResolvedValue(undefined),
-      onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
-      onDidWriteTerminalData: vi.fn(() => ({ dispose: vi.fn() })),
-      onDidStartTerminalShellExecution: vi.fn(() => ({ dispose: vi.fn() })),
-      onDidEndTerminalShellExecution: vi.fn(() => ({ dispose: vi.fn() })),
-      visibleTextEditors: [],
-    },
-    commands: {
-      registerCommand: vi.fn((_id: string, _callback: Function) => {
-        return { dispose: vi.fn() };
-      }),
-    },
-    languages: {
-      createDiagnosticCollection: vi.fn(() => mockDiagnosticCollection),
-      registerCodeLensProvider: vi.fn(() => ({ dispose: vi.fn() })),
-      registerHoverProvider: vi.fn(() => ({ dispose: vi.fn() })),
-    },
-    workspace: {
-      workspaceFolders: undefined as any,
-      onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
-      asRelativePath: vi.fn((uri: any) => uri?.fsPath ?? uri),
-      fs: {
-        readFile: vi.fn().mockRejectedValue(new Error('not found')),
-        writeFile: vi.fn().mockResolvedValue(undefined),
+vi.mock('vscode', () => import('./__mocks__/vscode'));
+vi.mock('./DiagramEditorProvider', () => ({
+  DiagramEditorProvider: {
+    register: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+  },
+}));
+vi.mock('./DiagramService', () => ({
+  DiagramService: vi.fn().mockImplementation(() => ({
+    setActiveDocument: vi.fn(),
+    getActiveDocument: vi.fn(),
+    parseDocument: vi.fn(),
+    applySemanticOps: vi.fn(),
+    autoLayoutAll: vi.fn(),
+    emptyDocument: vi.fn().mockReturnValue({
+      meta: {
+        version: '1.0',
+        title: 'Untitled Diagram',
+        created: '2025-01-01T00:00:00Z',
+        modified: '2025-01-01T00:00:00Z',
       },
-      openTextDocument: vi.fn().mockResolvedValue({ uri: { fsPath: '/workspace/test.md' } }),
-    },
-    StatusBarAlignment: {
-      Left: 1,
-      Right: 2,
-    },
-    DiagnosticSeverity: {
-      Error: 0,
-      Warning: 1,
-      Information: 2,
-      Hint: 3,
-    },
-    OverviewRulerLane: {
-      Left: 1,
-      Center: 2,
-      Right: 4,
-    },
-    ThemeColor: vi.fn((id: string) => ({ id })),
-    Range: vi.fn((sl: number, sc: number, el: number, ec: number) => ({
-      start: { line: sl, character: sc },
-      end: { line: el, character: ec },
-    })),
-    Position: vi.fn((l: number, c: number) => ({ line: l, character: c })),
-    Diagnostic: vi.fn().mockImplementation(function (this: any, range: any, message: string, severity: number) {
-      this.range = range;
-      this.message = message;
-      this.severity = severity;
-      this.source = '';
+      nodes: [],
+      edges: [],
+      groups: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
     }),
-    MarkdownString: vi.fn().mockImplementation(function (this: any) {
-      this.value = '';
-      this.isTrusted = false;
-      this.appendMarkdown = function (text: string) { this.value += text; };
-    }),
-    CodeLens: vi.fn((range: any, command: any) => ({ range, command })),
-    Hover: vi.fn((contents: any) => ({ contents })),
-    Uri: {
-      joinPath: vi.fn((_base: any, path: string) => ({ fsPath: `/workspace/${path}` })),
-    },
-    CancellationTokenSource: vi.fn(() => ({
-      token: { isCancellationRequested: false },
-      cancel: vi.fn(),
-      dispose: vi.fn(),
-    })),
-    ViewColumn: { Beside: 2 },
-    LanguageModelChatMessage: {
-      User: vi.fn((text: string) => ({ role: 'user', content: text })),
-    },
-    lm: {
-      selectChatModels: vi.fn(async () => []),
-    },
-  };
-});
+  })),
+}));
+vi.mock('./tools', () => ({
+  registerDiagramTools: vi.fn(),
+}));
 
-describe('AgentWatch Extension', () => {
+import { activate, deactivate } from './extension';
+import { DiagramEditorProvider } from './DiagramEditorProvider';
+import { registerDiagramTools } from './tools';
+import * as vscode from 'vscode';
+
+describe('extension', () => {
+  let context: vscode.ExtensionContext;
+
   beforeEach(() => {
-    vi.resetModules();
+    vi.clearAllMocks();
+    context = {
+      subscriptions: [],
+      extensionUri: vscode.Uri.file('/ext'),
+    } as unknown as vscode.ExtensionContext;
   });
 
-  it('should activate without errors', async () => {
-    const { activate } = await import('./extension');
-    const context = {
-      subscriptions: [] as any[],
-    } as any;
+  describe('activate', () => {
+    it('registers the editor provider', () => {
+      activate(context);
+      expect(DiagramEditorProvider.register).toHaveBeenCalledTimes(1);
+    });
 
-    expect(() => activate(context)).not.toThrow();
+    it('registers diagram tools', () => {
+      activate(context);
+      expect(registerDiagramTools).toHaveBeenCalledTimes(1);
+    });
+
+    it('registers 5 commands', () => {
+      activate(context);
+      expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(5);
+
+      const commandNames = vi
+        .mocked(vscode.commands.registerCommand)
+        .mock.calls.map((c) => c[0]);
+      expect(commandNames).toContain('diagramflow.newDiagram');
+      expect(commandNames).toContain('diagramflow.exportSVG');
+      expect(commandNames).toContain('diagramflow.exportMermaid');
+      expect(commandNames).toContain('diagramflow.autoLayout');
+      expect(commandNames).toContain('diagramflow.importSVG');
+    });
+
+    it('pushes subscriptions to context', () => {
+      activate(context);
+      expect(context.subscriptions.length).toBeGreaterThan(0);
+    });
   });
 
-  it('should register all commands', async () => {
-    const vscode = await import('vscode');
-    const { activate } = await import('./extension');
-    const context = {
-      subscriptions: [] as any[],
-    } as any;
-
-    activate(context);
-
-    const registeredCommands = (vscode.commands.registerCommand as any).mock.calls.map(
-      (call: any[]) => call[0]
-    );
-    expect(registeredCommands).toContain('agentWatch.arm');
-    expect(registeredCommands).toContain('agentWatch.disarm');
-    expect(registeredCommands).toContain('agentWatch.clearReview');
-    expect(registeredCommands).toContain('agentWatch.triggerFinalSweep');
-    expect(registeredCommands).toContain('agentWatch.showIssueDetail');
-    expect(registeredCommands).toContain('agentWatch.editInstructions');
-  });
-
-  it('should create a status bar item on activation', async () => {
-    const vscode = await import('vscode');
-    const { activate } = await import('./extension');
-    const context = {
-      subscriptions: [] as any[],
-    } as any;
-
-    activate(context);
-
-    expect(vscode.window.createStatusBarItem).toHaveBeenCalled();
-  });
-
-  it('should create an output channel on activation', async () => {
-    const vscode = await import('vscode');
-    const { activate } = await import('./extension');
-    const context = {
-      subscriptions: [] as any[],
-    } as any;
-
-    activate(context);
-
-    expect(vscode.window.createOutputChannel).toHaveBeenCalledWith('AgentWatch');
+  describe('deactivate', () => {
+    it('is a no-op function', () => {
+      expect(() => deactivate()).not.toThrow();
+    });
   });
 });

@@ -1,0 +1,146 @@
+{
+  "meta": {
+    "version": "1.0",
+    "title": "Complex Diagram",
+    "created": "2025-01-01T00:00:00Z",
+    "modified": "2025-01-01T00:00:00Z"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "label": "User Request",
+      "shape": "rectangle",
+      "color": "blue",
+      "x": 40,
+      "y": 40,
+      "width": 160,
+      "height": 48,
+      "pinned": true,
+      "group": "g1"
+    },
+    {
+      "id": "n2",
+      "label": "Is Valid?",
+      "shape": "diamond",
+      "color": "yellow",
+      "x": 280,
+      "y": 40,
+      "width": 160,
+      "height": 48,
+      "pinned": true,
+      "group": "g1"
+    },
+    {
+      "id": "n3",
+      "label": "Process Data",
+      "shape": "rectangle",
+      "color": "green",
+      "x": 520,
+      "y": 0,
+      "width": 160,
+      "height": 48,
+      "pinned": true,
+      "group": "g2"
+    },
+    {
+      "id": "n4",
+      "label": "Error Handler",
+      "shape": "rectangle",
+      "color": "red",
+      "x": 520,
+      "y": 100,
+      "width": 160,
+      "height": 48,
+      "pinned": true,
+      "group": "g2"
+    },
+    {
+      "id": "n5",
+      "label": "Response",
+      "shape": "rounded",
+      "color": "purple",
+      "x": 760,
+      "y": 40,
+      "width": 160,
+      "height": 48,
+      "pinned": true
+    },
+    {
+      "id": "n6",
+      "label": "Database",
+      "shape": "cylinder",
+      "color": "default",
+      "x": 520,
+      "y": 200,
+      "width": 160,
+      "height": 48,
+      "pinned": true,
+      "notes": "PostgreSQL 15"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "n1",
+      "target": "n2",
+      "label": "validate",
+      "style": "solid",
+      "arrow": "normal",
+      "animated": false
+    },
+    {
+      "id": "e2",
+      "source": "n2",
+      "target": "n3",
+      "label": "yes",
+      "style": "solid",
+      "arrow": "normal",
+      "animated": false
+    },
+    {
+      "id": "e3",
+      "source": "n2",
+      "target": "n4",
+      "label": "no",
+      "style": "dashed",
+      "arrow": "normal",
+      "animated": false
+    },
+    {
+      "id": "e4",
+      "source": "n3",
+      "target": "n5",
+      "label": "success",
+      "style": "solid",
+      "arrow": "normal",
+      "animated": true
+    },
+    {
+      "id": "e5",
+      "source": "n4",
+      "target": "n5",
+      "label": "error response",
+      "style": "dotted",
+      "arrow": "open",
+      "animated": false
+    },
+    {
+      "id": "e6",
+      "source": "n3",
+      "target": "n6",
+      "label": "read/write",
+      "style": "solid",
+      "arrow": "normal",
+      "animated": false
+    }
+  ],
+  "groups": [
+    { "id": "g1", "label": "Input Layer" },
+    { "id": "g2", "label": "Processing Layer" }
+  ],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

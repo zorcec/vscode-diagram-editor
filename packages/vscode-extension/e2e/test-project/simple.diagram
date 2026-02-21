@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "version": "1.0",
+    "title": "Simple Test Diagram",
+    "created": "2025-01-01T00:00:00Z",
+    "modified": "2025-01-01T00:00:00Z"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "label": "Start",
+      "shape": "rectangle",
+      "color": "green",
+      "x": 40,
+      "y": 40,
+      "width": 160,
+      "height": 48,
+      "pinned": true
+    },
+    {
+      "id": "n2",
+      "label": "Process",
+      "shape": "rectangle",
+      "color": "default",
+      "x": 280,
+      "y": 40,
+      "width": 160,
+      "height": 48,
+      "pinned": true
+    },
+    {
+      "id": "n3",
+      "label": "End",
+      "shape": "rectangle",
+      "color": "red",
+      "x": 520,
+      "y": 40,
+      "width": 160,
+      "height": 48,
+      "pinned": true
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "n1",
+      "target": "n2",
+      "label": "next",
+      "style": "solid",
+      "arrow": "normal",
+      "animated": false
+    },
+    {
+      "id": "e2",
+      "source": "n2",
+      "target": "n3",
+      "label": "done",
+      "style": "solid",
+      "arrow": "normal",
+      "animated": false
+    }
+  ],
+  "groups": [],
+  "viewport": {
+    "x": 0,
+    "y": 0,
+    "zoom": 1
+  }
+}

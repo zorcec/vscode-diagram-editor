@@ -12,7 +12,15 @@ export default defineConfig({
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*'
     ],
     coverage: {
-      reporter: ['text', 'json']
+      reporter: ['text', 'json'],
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.d.ts',
+        'src/__mocks__/**',
+        'src/messages/protocol.ts',
+        'src/types/operations.ts',
+      ],
     }
   }
 });
