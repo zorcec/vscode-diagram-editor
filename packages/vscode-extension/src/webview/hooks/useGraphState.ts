@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   useNodesState,
   useEdgesState,
@@ -10,20 +10,25 @@ import {
 } from '@xyflow/react';
 import { docToFlowNodes, docToFlowEdges, type DiagramNodeData, type DiagramEdgeData } from '../lib/docToFlow';
 import { buildExportSvg, rasterizeSvgToPng } from '../lib/exportSvg';
-import type { DiagramDocument } from '../../types/DiagramDocument';
+import type { DiagramDocument, NodeShape, NodeColor, EdgeStyle, ArrowType } from '../../types/DiagramDocument';
 import type { VSCodeBridge } from './useVSCodeBridge';
 
 export type GraphState = {
   nodes: Node<DiagramNodeData>[];
   edges: Edge<DiagramEdgeData>[];
+  selectedNodeId: string | null;
+  selectedEdgeId: string | null;
   onNodesChange: OnNodesChange<Node<DiagramNodeData>>;
   onEdgesChange: OnEdgesChange<Edge<DiagramEdgeData>>;
   onNodeDragStop: (_event: React.MouseEvent, node: Node) => void;
   onConnect: (connection: Connection) => void;
   onNodesDelete: (deleted: Node[]) => void;
   onEdgesDelete: (deleted: Edge[]) => void;
+  onSelectionChange: (params: { nodes: Node[]; edges: Edge[] }) => void;
   onAddNode: () => void;
   onNodeLabelChange: (id: string, label: string) => void;
+  onUpdateNodeProps: (id: string, changes: { label?: string; shape?: NodeShape; color?: NodeColor; notes?: string }) => void;
+  onUpdateEdgeProps: (id: string, changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean }) => void;
   onRequestLayout: () => void;
   onExportSvg: () => void;
   onExportPng: () => void;
@@ -37,6 +42,8 @@ export function useGraphState(
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<DiagramNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<DiagramEdgeData>>([]);
   const lastDocHashRef = useRef<string>('');
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!doc) return;
@@ -46,6 +53,16 @@ export function useGraphState(
     setNodes(docToFlowNodes(doc));
     setEdges(docToFlowEdges(doc));
   }, [doc, setNodes, setEdges]);
+
+  const onSelectionChange = useCallback(
+    ({ nodes: selNodes, edges: selEdges }: { nodes: Node[]; edges: Edge[] }) => {
+      const nodeId = selNodes.length === 1 ? selNodes[0].id : null;
+      const edgeId = selEdges.length === 1 && selNodes.length === 0 ? selEdges[0].id : null;
+      setSelectedNodeId(nodeId);
+      setSelectedEdgeId(edgeId);
+    },
+    [setSelectedNodeId, setSelectedEdgeId],
+  );
 
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, node: Node) => {
@@ -105,6 +122,20 @@ export function useGraphState(
     [bridge],
   );
 
+  const onUpdateNodeProps = useCallback(
+    (id: string, changes: { label?: string; shape?: NodeShape; color?: NodeColor; notes?: string }) => {
+      bridge.postMessage({ type: 'UPDATE_NODE_PROPS', id, changes });
+    },
+    [bridge],
+  );
+
+  const onUpdateEdgeProps = useCallback(
+    (id: string, changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean }) => {
+      bridge.postMessage({ type: 'UPDATE_EDGE_PROPS', id, changes });
+    },
+    [bridge],
+  );
+
   const onRequestLayout = useCallback(() => {
     bridge.postMessage({ type: 'REQUEST_LAYOUT' });
   }, [bridge]);
@@ -130,17 +161,23 @@ export function useGraphState(
   return {
     nodes,
     edges,
+    selectedNodeId,
+    selectedEdgeId,
     onNodesChange,
     onEdgesChange,
     onNodeDragStop,
     onConnect,
     onNodesDelete,
     onEdgesDelete,
+    onSelectionChange,
     onAddNode,
     onNodeLabelChange,
+    onUpdateNodeProps,
+    onUpdateEdgeProps,
     onRequestLayout,
     onExportSvg,
     onExportPng,
     onOpenSvg,
   };
 }
+

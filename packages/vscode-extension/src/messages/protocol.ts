@@ -1,4 +1,4 @@
-import type { DiagramDocument } from '../types/DiagramDocument';
+import type { DiagramDocument, NodeShape, NodeColor, EdgeStyle, ArrowType } from '../types/DiagramDocument';
 
 export type WebviewMessage =
   | { type: 'WEBVIEW_READY' }
@@ -10,15 +10,35 @@ export type WebviewMessage =
     }
   | {
       type: 'ADD_NODE';
-      node: { label: string; shape?: string; color?: string };
+      node: { label: string; shape?: NodeShape; color?: NodeColor; notes?: string };
     }
   | { type: 'DELETE_NODES'; nodeIds: string[] }
   | {
       type: 'ADD_EDGE';
-      edge: { source: string; target: string; label?: string };
+      edge: { source: string; target: string; label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean };
     }
   | { type: 'DELETE_EDGES'; edgeIds: string[] }
   | { type: 'UPDATE_NODE_LABEL'; id: string; label: string }
+  | {
+      type: 'UPDATE_NODE_PROPS';
+      id: string;
+      changes: {
+        label?: string;
+        shape?: NodeShape;
+        color?: NodeColor;
+        notes?: string;
+      };
+    }
+  | {
+      type: 'UPDATE_EDGE_PROPS';
+      id: string;
+      changes: {
+        label?: string;
+        style?: EdgeStyle;
+        arrow?: ArrowType;
+        animated?: boolean;
+      };
+    }
   | { type: 'REQUEST_LAYOUT' }
   | {
       type: 'EXPORT';

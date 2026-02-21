@@ -3,6 +3,7 @@ import type { DiagramDocument } from './types/DiagramDocument';
 import type { SemanticOp } from './types/operations';
 import { applyOps, createEmptyDocument } from './lib/operations';
 import { computePartialLayout, computeFullLayout } from './lib/layoutEngine';
+import { generateAgentContext } from './lib/agentContext';
 import { nanoid } from 'nanoid';
 
 export class DiagramService {
@@ -71,6 +72,7 @@ export class DiagramService {
     }
 
     resetDoc.meta.modified = new Date().toISOString();
+    resetDoc.agentContext = generateAgentContext(resetDoc);
     await writeDocumentToFile(target, resetDoc);
   }
 

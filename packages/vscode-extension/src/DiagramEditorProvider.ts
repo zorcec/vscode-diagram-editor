@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { DiagramService } from './DiagramService';
 import { getWebviewContent } from './getWebviewContent';
@@ -150,12 +151,26 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
         );
         break;
 
+      case 'UPDATE_NODE_PROPS':
+        await this.diagramService.applySemanticOps(
+          [{ op: 'update_node', id: msg.id, changes: msg.changes }],
+          document,
+        );
+        break;
+
+      case 'UPDATE_EDGE_PROPS':
+        await this.diagramService.applySemanticOps(
+          [{ op: 'update_edge', id: msg.id, changes: msg.changes }],
+          document,
+        );
+        break;
+
       case 'REQUEST_LAYOUT':
         await this.diagramService.autoLayoutAll(document);
         break;
 
       case 'EXPORT':
-        await this.handleExport(msg.format, msg.data);
+        await this.handleExport(msg.format, msg.data, document);
         break;
 
       case 'OPEN_SVG_REQUEST':
@@ -171,6 +186,7 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
   private async handleExport(
     format: 'svg' | 'png' | 'mermaid',
     data: string,
+    document: vscode.TextDocument,
   ): Promise<void> {
     const filterMap: Record<string, { label: string; ext: string }> = {
       svg: { label: 'SVG Image', ext: 'svg' },
@@ -180,9 +196,15 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
 
     const { label, ext } = filterMap[format] ?? { label: 'File', ext: 'txt' };
 
+    // Default export path: same directory and base name as the .diagram file.
+    const docFsPath = document.uri.fsPath;
+    const baseName = path.basename(docFsPath, path.extname(docFsPath));
+    const dir = path.dirname(docFsPath);
+    const defaultFsPath = path.join(dir, `${baseName}.${ext}`);
+
     const saveUri = await vscode.window.showSaveDialog({
       filters: { [label]: [ext] },
-      defaultUri: vscode.Uri.file(`diagram.${ext}`),
+      defaultUri: vscode.Uri.file(defaultFsPath),
     });
     if (!saveUri) return;
 

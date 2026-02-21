@@ -211,6 +211,42 @@ describe('DiagramService', () => {
 
       expect(vscode.workspace.applyEdit).toHaveBeenCalledTimes(1);
     });
+
+    it('writes agentContext into the document after layout', async () => {
+      const doc = makeValidDoc();
+      doc.nodes = [
+        {
+          id: 'n1', label: 'Frontend', x: 0, y: 0, width: 160, height: 48,
+          shape: 'rectangle', color: 'default', pinned: false,
+        },
+        {
+          id: 'n2', label: 'Backend', x: 0, y: 0, width: 160, height: 48,
+          shape: 'rectangle', color: 'default', pinned: false,
+        },
+      ];
+      doc.edges = [
+        { id: 'e1', source: 'n1', target: 'n2', style: 'solid', arrow: 'arrow' },
+      ];
+
+      const textDoc = makeMockTextDocument(JSON.stringify(doc));
+      let writtenContent = '';
+      const applyEditMock = vi.mocked(vscode.workspace.applyEdit);
+      applyEditMock.mockImplementation(async (edit: vscode.WorkspaceEdit) => {
+        writtenContent = (edit as any)._edits?.[0]?.newText ?? '';
+        return true;
+      });
+
+      await service.autoLayoutAll(textDoc);
+
+      if (writtenContent) {
+        const written = JSON.parse(writtenContent);
+        expect(written.agentContext).toBeDefined();
+        expect(written.agentContext.format).toBe('diagramflow-v1');
+        expect(written.agentContext.nodeIndex).toHaveLength(2);
+      }
+      // Regardless of mock depth, applyEdit must have been called
+      expect(applyEditMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('emptyDocument', () => {

@@ -9,6 +9,7 @@ import {
 } from '../types/DiagramDocument';
 import type { SemanticOp, OpResult } from '../types/operations';
 import { validateDiagram } from './SchemaValidator';
+import { generateAgentContext } from './agentContext';
 
 export function createEmptyDocument(title = 'Untitled Diagram'): DiagramDocument {
   const now = new Date().toISOString();
@@ -43,6 +44,7 @@ export function applyOps(
   }
 
   modified.meta.modified = new Date().toISOString();
+  modified.agentContext = generateAgentContext(modified);
   return { success: true, document: modified };
 }
 

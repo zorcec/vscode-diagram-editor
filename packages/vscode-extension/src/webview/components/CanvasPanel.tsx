@@ -11,6 +11,7 @@ import {
 import { DiagramNode } from './DiagramNode';
 import { DiagramEdge } from './DiagramEdge';
 import { Toolbar } from './Toolbar';
+import { PropertiesPanel } from './PropertiesPanel';
 import type { GraphState } from '../hooks/useGraphState';
 
 const nodeTypes = { diagramNode: DiagramNode };
@@ -32,7 +33,7 @@ type CanvasPanelProps = {
 export function CanvasPanel({ graph }: CanvasPanelProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         graph.onAddNode();
@@ -58,6 +59,30 @@ export function CanvasPanel({ graph }: CanvasPanelProps) {
     [graph.nodes, graph.onNodeLabelChange],
   );
 
+  // Determine what the PropertiesPanel should display
+  const propertiesPanelInput = useMemo(() => {
+    if (graph.selectedNodeId) {
+      const node = graph.nodes.find((n) => n.id === graph.selectedNodeId);
+      if (node) {
+        return { kind: 'node' as const, node, onUpdateNode: graph.onUpdateNodeProps };
+      }
+    }
+    if (graph.selectedEdgeId) {
+      const edge = graph.edges.find((e) => e.id === graph.selectedEdgeId);
+      if (edge) {
+        return { kind: 'edge' as const, edge, onUpdateEdge: graph.onUpdateEdgeProps };
+      }
+    }
+    return { kind: 'none' as const };
+  }, [
+    graph.selectedNodeId,
+    graph.selectedEdgeId,
+    graph.nodes,
+    graph.edges,
+    graph.onUpdateNodeProps,
+    graph.onUpdateEdgeProps,
+  ]);
+
   return (
     <ReactFlowProvider>
     <div className="canvas-container" data-testid="canvas-container">
@@ -68,53 +93,58 @@ export function CanvasPanel({ graph }: CanvasPanelProps) {
         onExportPng={graph.onExportPng}
         onOpenSvg={graph.onOpenSvg}
       />
-      <ReactFlow
-        nodes={nodesWithCallbacks}
-        edges={graph.edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={graph.onNodesChange}
-        onEdgesChange={graph.onEdgesChange}
-        onConnect={graph.onConnect}
-        onNodeDragStop={graph.onNodeDragStop}
-        onNodesDelete={graph.onNodesDelete}
-        onEdgesDelete={graph.onEdgesDelete}
-        connectionMode={ConnectionMode.Loose}
-        fitView
-        defaultEdgeOptions={{ type: 'diagramEdge' }}
-        snapToGrid
-        snapGrid={[16, 16]}
-        deleteKeyCode={['Backspace', 'Delete']}
-        multiSelectionKeyCode="Shift"
-        data-testid="react-flow-canvas"
-      >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        <MiniMap
-          nodeColor={(n) =>
-            MINIMAP_NODE_COLORS[n.data?.color as string] ?? '#555'
-          }
-          maskColor="rgba(0,0,0,0.5)"
-          pannable
-          zoomable
-        />
-        <Controls showInteractive={false} />
+      <div className="canvas-main" data-testid="canvas-main">
+        <ReactFlow
+          nodes={nodesWithCallbacks}
+          edges={graph.edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={graph.onNodesChange}
+          onEdgesChange={graph.onEdgesChange}
+          onConnect={graph.onConnect}
+          onNodeDragStop={graph.onNodeDragStop}
+          onNodesDelete={graph.onNodesDelete}
+          onEdgesDelete={graph.onEdgesDelete}
+          onSelectionChange={graph.onSelectionChange}
+          connectionMode={ConnectionMode.Loose}
+          fitView
+          defaultEdgeOptions={{ type: 'diagramEdge' }}
+          snapToGrid
+          snapGrid={[16, 16]}
+          deleteKeyCode={['Backspace', 'Delete']}
+          multiSelectionKeyCode="Shift"
+          data-testid="react-flow-canvas"
+        >
+          <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+          <MiniMap
+            nodeColor={(n) =>
+              MINIMAP_NODE_COLORS[n.data?.color as string] ?? '#555'
+            }
+            maskColor="rgba(0,0,0,0.5)"
+            pannable
+            zoomable
+          />
+          <Controls showInteractive={false} />
 
-        {/* SVG defs for arrow markers */}
-        <svg style={{ position: 'absolute', width: 0, height: 0 }}>
-          <defs>
-            <marker
-              id="diagramflow-arrow"
-              markerWidth="10"
-              markerHeight="7"
-              refX="9"
-              refY="3.5"
-              orient="auto"
-            >
-              <polygon points="0 0, 10 3.5, 0 7" fill="var(--rf-edge, #888)" />
-            </marker>
-          </defs>
-        </svg>
-      </ReactFlow>
+          {/* SVG defs for arrow markers */}
+          <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+            <defs>
+              <marker
+                id="diagramflow-arrow"
+                markerWidth="10"
+                markerHeight="7"
+                refX="9"
+                refY="3.5"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3.5, 0 7" fill="var(--rf-edge, #888)" />
+              </marker>
+            </defs>
+          </svg>
+        </ReactFlow>
+
+        <PropertiesPanel {...propertiesPanelInput} />
+      </div>
     </div>
     </ReactFlowProvider>
   );

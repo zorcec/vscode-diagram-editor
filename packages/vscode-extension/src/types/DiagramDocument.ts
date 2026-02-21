@@ -51,6 +51,36 @@ export interface DiagramMeta {
   modified: string;
 }
 
+/**
+ * Auto-generated section consumed by AI coding agents (GitHub Copilot, Claude, etc.)
+ * when the VS Code extension is NOT installed. Agents can read this from the raw
+ * `.diagram` JSON file to understand the architecture depicted in the diagram.
+ *
+ * This section is regenerated automatically every time the diagram changes.
+ * Do NOT edit it manually — your changes will be overwritten.
+ */
+export interface AgentContext {
+  /** How to read this diagram (always "diagramflow-v1") */
+  format: 'diagramflow-v1';
+  /** ISO-8601 timestamp of when this section was last generated */
+  generatedAt: string;
+  /** Plain-English summary derived from nodes, edges and meta */
+  summary: string;
+  /** Compact node list: id → label + notes */
+  nodeIndex: Array<{ id: string; label: string; notes?: string; group?: string }>;
+  /** Compact edge list: source label → target label with optional description */
+  edgeIndex: Array<{
+    from: string;
+    to: string;
+    label?: string;
+    style?: EdgeStyle;
+  }>;
+  /** Group membership map: groupLabel → nodeLabels[] */
+  groupIndex: Array<{ group: string; members: string[] }>;
+  /** How to use the diagram tools when the extension is installed */
+  usage: string;
+}
+
 export interface DiagramDocument {
   meta: DiagramMeta;
   nodes: DiagramNode[];
@@ -61,6 +91,8 @@ export interface DiagramDocument {
     y: number;
     zoom: number;
   };
+  /** Auto-generated agent-readable context. See {@link AgentContext}. */
+  agentContext?: AgentContext;
 }
 
 export const NODE_SHAPES: readonly NodeShape[] = [

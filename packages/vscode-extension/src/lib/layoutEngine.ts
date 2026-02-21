@@ -1,4 +1,6 @@
+import dagre from '@dagrejs/dagre';
 import type { DiagramDocument } from '../types/DiagramDocument';
+import { DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../types/DiagramDocument';
 
 export interface LayoutResult {
   nodeId: string;
@@ -14,20 +16,18 @@ export interface LayoutConfig {
   marginy: number;
 }
 
-const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
+export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   rankdir: 'LR',
   ranksep: 120,
   nodesep: 60,
-  marginx: 40,
-  marginy: 40,
+  marginx: 60,
+  marginy: 60,
 };
 
 /**
- * Computes positions for unpinned nodes at origin (x=0, y=0).
- * Pinned nodes and nodes with existing positions are untouched.
- *
- * Uses a simple topological/layered layout when dagre is not available,
- * or dagre when it is.
+ * Computes positions for unpinned nodes that sit exactly at the origin (x=0,y=0).
+ * Pinned nodes and nodes with existing positions are left untouched.
+ * Uses Dagre for proper graph layout with edge-crossing minimization.
  */
 export function computePartialLayout(
   doc: DiagramDocument,
@@ -39,145 +39,71 @@ export function computePartialLayout(
 
   if (unpinnedAtOrigin.length === 0) return [];
 
-  return computeSimpleLayout(doc, unpinnedAtOrigin, config);
+  return computeDagreLayout(doc, unpinnedAtOrigin, config);
 }
 
 /**
  * Computes layout for ALL nodes (ignoring pinned status).
  * Used by the "Auto Layout All" command.
+ * Dagre produces a proper hierarchical graph layout with minimized edge crossings.
  */
 export function computeFullLayout(
   doc: DiagramDocument,
   config: LayoutConfig = DEFAULT_LAYOUT_CONFIG,
 ): LayoutResult[] {
   if (doc.nodes.length === 0) return [];
-  return computeSimpleLayout(doc, doc.nodes, config);
+  return computeDagreLayout(doc, doc.nodes, config);
 }
 
 /**
- * Simple layered layout algorithm.
- * Assigns nodes to layers based on topological sort of the edge graph,
- * then spaces them according to config.
+ * Dagre-powered layout. Builds a directed graph from the diagram document,
+ * runs Dagre's Sugiyama-style layout, and maps results back to diagram coordinates.
+ *
+ * Dagre guarantees:
+ *  - Nodes are placed in ranked layers aligned with the flow direction.
+ *  - Edge crossings are minimized via the barrycenter heuristic.
+ *  - Nodes never overlap.
  */
-function computeSimpleLayout(
+function computeDagreLayout(
   doc: DiagramDocument,
   targetNodes: typeof doc.nodes,
   config: LayoutConfig,
 ): LayoutResult[] {
+  const g = new dagre.graphlib.Graph({ multigraph: true });
+  g.setGraph({
+    rankdir: config.rankdir,
+    ranksep: config.ranksep,
+    nodesep: config.nodesep,
+    marginx: config.marginx,
+    marginy: config.marginy,
+    edgesep: 40,
+  });
+  g.setDefaultEdgeLabel(() => ({}));
+
   const targetIds = new Set(targetNodes.map((n) => n.id));
-  const nodeMap = new Map(doc.nodes.map((n) => [n.id, n]));
 
-  const adjacency = buildAdjacency(doc, targetIds);
-  const layers = assignLayers(targetIds, adjacency);
-  const isHorizontal = config.rankdir === 'LR' || config.rankdir === 'RL';
-
-  const results: LayoutResult[] = [];
-
-  for (let layerIndex = 0; layerIndex < layers.length; layerIndex++) {
-    const layer = layers[layerIndex];
-
-    for (let nodeIndex = 0; nodeIndex < layer.length; nodeIndex++) {
-      const nodeId = layer[nodeIndex];
-      const node = nodeMap.get(nodeId);
-      if (!node) continue;
-
-      let x: number;
-      let y: number;
-
-      if (isHorizontal) {
-        x = config.marginx + layerIndex * (node.width + config.ranksep);
-        y = config.marginy + nodeIndex * (node.height + config.nodesep);
-      } else {
-        x = config.marginx + nodeIndex * (node.width + config.nodesep);
-        y = config.marginy + layerIndex * (node.height + config.ranksep);
-      }
-
-      if (config.rankdir === 'RL') {
-        x =
-          config.marginx +
-          (layers.length - 1 - layerIndex) * (node.width + config.ranksep);
-      }
-      if (config.rankdir === 'BT') {
-        y =
-          config.marginy +
-          (layers.length - 1 - layerIndex) * (node.height + config.ranksep);
-      }
-
-      results.push({ nodeId, x: Math.round(x), y: Math.round(y) });
-    }
-  }
-
-  return results;
-}
-
-function buildAdjacency(
-  doc: DiagramDocument,
-  targetIds: Set<string>,
-): Map<string, string[]> {
-  const adj = new Map<string, string[]>();
-
-  for (const id of targetIds) {
-    adj.set(id, []);
+  for (const node of targetNodes) {
+    const w = node.width > 0 ? node.width : DEFAULT_NODE_WIDTH;
+    const h = node.height > 0 ? node.height : DEFAULT_NODE_HEIGHT;
+    g.setNode(node.id, { width: w, height: h });
   }
 
   for (const edge of doc.edges) {
     if (targetIds.has(edge.source) && targetIds.has(edge.target)) {
-      const list = adj.get(edge.source);
-      if (list) list.push(edge.target);
+      g.setEdge(edge.source, edge.target, {}, edge.id);
     }
   }
 
-  return adj;
-}
+  dagre.layout(g);
 
-/**
- * Assigns nodes to layers via a simplified topological sort.
- * Nodes with no incoming edges go in layer 0, their dependents in layer 1, etc.
- */
-function assignLayers(
-  targetIds: Set<string>,
-  adjacency: Map<string, string[]>,
-): string[][] {
-  const inDegree = new Map<string, number>();
-  for (const id of targetIds) {
-    inDegree.set(id, 0);
-  }
-
-  for (const [, neighbors] of adjacency) {
-    for (const neighbor of neighbors) {
-      inDegree.set(neighbor, (inDegree.get(neighbor) ?? 0) + 1);
-    }
-  }
-
-  const layers: string[][] = [];
-  const remaining = new Set(targetIds);
-
-  while (remaining.size > 0) {
-    const layer: string[] = [];
-
-    for (const id of remaining) {
-      if ((inDegree.get(id) ?? 0) === 0) {
-        layer.push(id);
-      }
-    }
-
-    if (layer.length === 0) {
-      // Cycle detected — put all remaining in one layer
-      layers.push([...remaining]);
-      break;
-    }
-
-    layer.sort();
-    layers.push(layer);
-
-    for (const id of layer) {
-      remaining.delete(id);
-      const neighbors = adjacency.get(id) ?? [];
-      for (const neighbor of neighbors) {
-        inDegree.set(neighbor, (inDegree.get(neighbor) ?? 0) - 1);
-      }
-    }
-  }
-
-  return layers;
+  return targetNodes.map((node) => {
+    const n = g.node(node.id);
+    const w = node.width > 0 ? node.width : DEFAULT_NODE_WIDTH;
+    const h = node.height > 0 ? node.height : DEFAULT_NODE_HEIGHT;
+    return {
+      nodeId: node.id,
+      x: Math.round(n.x - w / 2),
+      y: Math.round(n.y - h / 2),
+    };
+  });
 }

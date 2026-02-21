@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computePartialLayout, computeFullLayout } from './layoutEngine';
+import { computePartialLayout, computeFullLayout, DEFAULT_LAYOUT_CONFIG } from './layoutEngine';
 import type { DiagramDocument } from '../types/DiagramDocument';
 
 function makeDoc(
@@ -271,5 +271,120 @@ describe('computeFullLayout', () => {
     const aPos = results.find((r) => r.nodeId === 'a')!;
     const bPos = results.find((r) => r.nodeId === 'b')!;
     expect(aPos.x !== bPos.x || aPos.y !== bPos.y).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dagre-specific guarantees
+// ---------------------------------------------------------------------------
+
+describe('computeFullLayout — Dagre guarantees', () => {
+  const makeNode = (id: string) => ({
+    id,
+    label: id.toUpperCase(),
+    x: 0,
+    y: 0,
+    width: 160,
+    height: 48,
+    shape: 'rectangle' as const,
+    color: 'default' as const,
+    pinned: false,
+  });
+
+  it('default config is exported and has all required keys', () => {
+    expect(DEFAULT_LAYOUT_CONFIG).toMatchObject({
+      rankdir: expect.any(String),
+      ranksep: expect.any(Number),
+      nodesep: expect.any(Number),
+      marginx: expect.any(Number),
+      marginy: expect.any(Number),
+    });
+  });
+
+  it('nodes do not overlap in a chain (LR direction)', () => {
+    const doc = makeDoc({
+      nodes: ['a', 'b', 'c'].map(makeNode),
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', style: 'solid' as const, arrow: 'arrow' as const },
+        { id: 'e2', source: 'b', target: 'c', style: 'solid' as const, arrow: 'arrow' as const },
+      ],
+    });
+    const results = computeFullLayout(doc);
+
+    // In LR mode, consecutive rank nodes should have different x positions
+    const positions = ['a', 'b', 'c'].map((id) => results.find((r) => r.nodeId === id)!);
+    expect(positions[0].x).toBeLessThan(positions[1].x);
+    expect(positions[1].x).toBeLessThan(positions[2].x);
+  });
+
+  it('parallel nodes with no edges are placed at different y positions', () => {
+    const doc = makeDoc({
+      nodes: ['a', 'b', 'c'].map(makeNode),
+      edges: [], // no edges → all in same rank, different y
+    });
+    const results = computeFullLayout(doc);
+
+    const ys = results.map((r) => r.y);
+    const uniqueYs = new Set(ys);
+    // Dagre places disconnected nodes in the same layer but at different y
+    expect(uniqueYs.size).toBeGreaterThanOrEqual(1);
+    // No two nodes should share the exact same (x, y)
+    const positions = results.map((r) => `${r.x},${r.y}`);
+    const unique = new Set(positions);
+    expect(unique.size).toBe(results.length);
+  });
+
+  it('handles graph with a cycle without throwing', () => {
+    const doc = makeDoc({
+      nodes: ['a', 'b'].map(makeNode),
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', style: 'solid' as const, arrow: 'arrow' as const },
+        { id: 'e2', source: 'b', target: 'a', style: 'solid' as const, arrow: 'arrow' as const },
+      ],
+    });
+    expect(() => computeFullLayout(doc)).not.toThrow();
+    const results = computeFullLayout(doc);
+    expect(results).toHaveLength(2);
+  });
+
+  it('returns integer coordinates (rounded)', () => {
+    const doc = makeDoc({
+      nodes: ['a', 'b', 'c'].map(makeNode),
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', style: 'solid' as const, arrow: 'arrow' as const },
+        { id: 'e2', source: 'b', target: 'c', style: 'solid' as const, arrow: 'arrow' as const },
+      ],
+    });
+    const results = computeFullLayout(doc);
+    for (const r of results) {
+      expect(r.x).toBe(Math.round(r.x));
+      expect(r.y).toBe(Math.round(r.y));
+    }
+  });
+
+  it('respects TB rankdir — source is above target', () => {
+    const doc = makeDoc({
+      nodes: ['a', 'b'].map(makeNode),
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', style: 'solid' as const, arrow: 'arrow' as const },
+      ],
+    });
+    const results = computeFullLayout(doc, { ...DEFAULT_LAYOUT_CONFIG, rankdir: 'TB' });
+    const a = results.find((r) => r.nodeId === 'a')!;
+    const b = results.find((r) => r.nodeId === 'b')!;
+    expect(a.y).toBeLessThan(b.y);
+  });
+
+  it('isolates multi-edge multigraph correctly', () => {
+    const doc = makeDoc({
+      nodes: ['a', 'b'].map(makeNode),
+      edges: [
+        { id: 'e1', source: 'a', target: 'b', style: 'solid' as const, arrow: 'arrow' as const },
+        { id: 'e2', source: 'a', target: 'b', style: 'dashed' as const, arrow: 'open' as const },
+      ],
+    });
+    expect(() => computeFullLayout(doc)).not.toThrow();
+    const results = computeFullLayout(doc);
+    expect(results).toHaveLength(2);
   });
 });

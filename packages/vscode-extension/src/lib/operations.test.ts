@@ -500,3 +500,58 @@ describe('applyOps - compound operations', () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// agentContext auto-generation
+// ---------------------------------------------------------------------------
+
+describe('applyOps — agentContext auto-generation', () => {
+  beforeEach(() => { idCounter = 0; });
+
+  it('generates agentContext after a successful op', () => {
+    const doc = makeBaseDoc();
+    const result = applyOps(doc, [{ op: 'add_node', node: { label: 'New' } }], mockId);
+
+    expect(result.success).toBe(true);
+    expect(result.document!.agentContext).toBeDefined();
+    expect(result.document!.agentContext!.format).toBe('diagramflow-v1');
+  });
+
+  it('agentContext.nodeIndex contains all node labels', () => {
+    const doc = makeBaseDoc();
+    const result = applyOps(doc, [{ op: 'add_node', node: { label: 'C' } }], mockId);
+
+    const labels = result.document!.agentContext!.nodeIndex.map((n) => n.label);
+    expect(labels).toContain('A');
+    expect(labels).toContain('B');
+    expect(labels).toContain('C');
+  });
+
+  it('agentContext.edgeIndex maps IDs to labels', () => {
+    const doc = makeBaseDoc();
+    // base doc has n1→n2 edge e1
+    const result = applyOps(doc, [{ op: 'update_node', id: 'n1', changes: { label: 'A' } }], mockId);
+
+    const edge = result.document!.agentContext!.edgeIndex[0];
+    expect(edge.from).toBe('A');
+    expect(edge.to).toBe('B');
+  });
+
+  it('does not generate agentContext on validation failure', () => {
+    const doc = makeBaseDoc();
+    const result = applyOps(doc, [{ op: 'remove_node', id: 'nonexistent' }], mockId);
+
+    expect(result.success).toBe(false);
+    expect(result.document).toBeUndefined();
+  });
+
+  it('agentContext.summary includes title and node count', () => {
+    const doc = makeBaseDoc();
+    const result = applyOps(doc, [{ op: 'update_node', id: 'n1', changes: { label: 'n1' } }], mockId);
+
+    const summary = result.document!.agentContext!.summary;
+    expect(summary).toContain('"Test"');
+    expect(summary).toContain('2 nodes');
+    expect(summary).toContain('1 edge');
+  });
+});
