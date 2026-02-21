@@ -120,8 +120,7 @@ export class DiagramService {
       }
     }
 
-    resetDoc.meta.modified = new Date().toISOString();
-    resetDoc.agentContext = generateAgentContext(resetDoc);
+    this.stampModified(resetDoc);
     this.recordHistory(current);
     await writeDocumentToFile(target, resetDoc);
   }
@@ -153,8 +152,7 @@ export class DiagramService {
       }
     }
 
-    resetDoc.meta.modified = new Date().toISOString();
-    resetDoc.agentContext = generateAgentContext(resetDoc);
+    this.stampModified(resetDoc);
     this.recordHistory(current);
     await writeDocumentToFile(target, resetDoc);
   }
@@ -182,8 +180,7 @@ export class DiagramService {
       node.pinned = true;
     }
 
-    modified.meta.modified = new Date().toISOString();
-    modified.agentContext = generateAgentContext(modified);
+    this.stampModified(modified);
     await writeDocumentToFile(target, modified);
   }
 
@@ -211,8 +208,7 @@ export class DiagramService {
     node.y = position.y;
     node.pinned = true;
 
-    modified.meta.modified = new Date().toISOString();
-    modified.agentContext = generateAgentContext(modified);
+    this.stampModified(modified);
     await writeDocumentToFile(target, modified);
   }
 
@@ -235,10 +231,9 @@ export class DiagramService {
     const group = modified.groups?.find((g) => g.id === groupId);
     if (!group) return;
 
-    const oldX = group.x ?? computeGroupOriginX(modified, groupId);
-    const oldY = group.y ?? computeGroupOriginY(modified, groupId);
-    const deltaX = newPosition.x - oldX;
-    const deltaY = newPosition.y - oldY;
+    const origin = computeGroupOrigin(modified, groupId);
+    const deltaX = newPosition.x - (group.x ?? origin.x);
+    const deltaY = newPosition.y - (group.y ?? origin.y);
 
     for (const node of modified.nodes) {
       if (node.group === groupId) {
@@ -250,8 +245,7 @@ export class DiagramService {
     group.x = newPosition.x;
     group.y = newPosition.y;
 
-    modified.meta.modified = new Date().toISOString();
-    modified.agentContext = generateAgentContext(modified);
+    this.stampModified(modified);
     await writeDocumentToFile(target, modified);
   }
 
@@ -275,14 +269,19 @@ export class DiagramService {
     edge.source = newSource;
     edge.target = newTarget;
 
-    modified.meta.modified = new Date().toISOString();
-    modified.agentContext = generateAgentContext(modified);
+    this.stampModified(modified);
     this.recordHistory(current);
     await writeDocumentToFile(target, modified);
   }
 
   emptyDocument(): DiagramDocument {
     return createEmptyDocument();
+  }
+
+  /** Stamps `modified` timestamp and refreshes agentContext on a cloned document. */
+  private stampModified(doc: DiagramDocument): void {
+    doc.meta.modified = new Date().toISOString();
+    doc.agentContext = generateAgentContext(doc);
   }
 }
 
@@ -301,18 +300,14 @@ function applyPartialLayout(doc: DiagramDocument): DiagramDocument {
   return modified;
 }
 
-/** Returns the stored group origin X, or computes it from the children's bounding box. */
-function computeGroupOriginX(doc: DiagramDocument, groupId: string): number {
+/** Computes the group origin {x,y} from child node positions and group padding. */
+function computeGroupOrigin(doc: DiagramDocument, groupId: string): { x: number; y: number } {
   const children = doc.nodes.filter((n) => n.group === groupId);
-  if (children.length === 0) return 0;
-  return Math.min(...children.map((n) => n.x)) - GROUP_PADDING;
-}
-
-/** Returns the stored group origin Y, or computes it from the children's bounding box. */
-function computeGroupOriginY(doc: DiagramDocument, groupId: string): number {
-  const children = doc.nodes.filter((n) => n.group === groupId);
-  if (children.length === 0) return 0;
-  return Math.min(...children.map((n) => n.y)) - GROUP_PADDING - GROUP_LABEL_HEIGHT;
+  if (children.length === 0) return { x: 0, y: 0 };
+  return {
+    x: Math.min(...children.map((n) => n.x)) - GROUP_PADDING,
+    y: Math.min(...children.map((n) => n.y)) - GROUP_PADDING - GROUP_LABEL_HEIGHT,
+  };
 }
 
 async function writeDocumentToFile(

@@ -143,7 +143,8 @@ describe('computePartialLayout', () => {
         },
       ],
     });
-    const results = computePartialLayout(doc);
+    const lrConfig = { ...DEFAULT_LAYOUT_CONFIG, rankdir: 'LR' as const };
+    const results = computePartialLayout(doc, lrConfig);
     expect(results).toHaveLength(2);
 
     const aResult = results.find((r) => r.nodeId === 'a')!;
@@ -225,7 +226,7 @@ describe('computeFullLayout', () => {
     expect(results).toHaveLength(0);
   });
 
-  it('should layout all nodes regardless of pinned status', () => {
+  it('should layout unpinned nodes only', () => {
     const doc = makeDoc({
       nodes: [
         {
@@ -253,7 +254,9 @@ describe('computeFullLayout', () => {
       ],
     });
     const results = computeFullLayout(doc);
-    expect(results).toHaveLength(2);
+    // computeFullLayout only repositions unpinned nodes
+    expect(results).toHaveLength(1);
+    expect(results[0].nodeId).toBe('b');
   });
 
   it('should produce different positions for connected nodes', () => {
@@ -309,7 +312,8 @@ describe('computeFullLayout — Dagre guarantees', () => {
         { id: 'e2', source: 'b', target: 'c', style: 'solid' as const, arrow: 'arrow' as const },
       ],
     });
-    const results = computeFullLayout(doc);
+    const lrConfig = { ...DEFAULT_LAYOUT_CONFIG, rankdir: 'LR' as const };
+    const results = computeFullLayout(doc, lrConfig);
 
     // In LR mode, consecutive rank nodes should have different x positions
     const positions = ['a', 'b', 'c'].map((id) => results.find((r) => r.nodeId === id)!);

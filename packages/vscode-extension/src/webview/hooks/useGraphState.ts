@@ -77,6 +77,7 @@ export type GraphState = {
   ) => void;
   onUpdateGroupProps: (id: string, changes: { label?: string; color?: NodeColor; collapsed?: boolean }) => void;
   onToggleGroupCollapse: (id: string) => void;
+  onSortNodes: (direction: LayoutDirection) => void;
   onRequestLayout: (direction?: LayoutDirection) => void;
   onRequestLayoutForce: (direction?: LayoutDirection) => void;
   onSetLayoutDirection: (direction: LayoutDirection) => void;
@@ -344,6 +345,13 @@ export function useGraphState(
     [bridge, groups],
   );
 
+  const onSortNodes = useCallback(
+    (direction: LayoutDirection) => {
+      bridge.postMessage({ type: 'SORT_NODES', direction });
+    },
+    [bridge],
+  );
+
   const onRequestLayout = useCallback(
     (direction?: LayoutDirection) => {
       layoutPendingRef.current = true;
@@ -451,6 +459,7 @@ export function useGraphState(
     onUpdateEdgeProps,
     onUpdateGroupProps,
     onToggleGroupCollapse,
+    onSortNodes,
     onRequestLayout,
     onRequestLayoutForce,
     onSetLayoutDirection,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { applyOps, createEmptyDocument } from './operations';
+import { applyOps, createEmptyDocument, sortNodesByPosition } from './operations';
 import type { DiagramDocument } from '../types/DiagramDocument';
 import type { SemanticOp } from '../types/operations';
 
@@ -553,5 +553,110 @@ describe('applyOps — agentContext auto-generation', () => {
     expect(summary).toContain('"Test"');
     expect(summary).toContain('2 nodes');
     expect(summary).toContain('1 edge');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sortNodesByPosition (pure function)
+// ---------------------------------------------------------------------------
+
+function makeNode(id: string, x: number, y: number) {
+  return {
+    id,
+    label: id.toUpperCase(),
+    x,
+    y,
+    width: 160,
+    height: 48,
+    shape: 'rectangle' as const,
+    color: 'default' as const,
+    pinned: false,
+  };
+}
+
+describe('sortNodesByPosition', () => {
+  it('TB: sorts by y asc, then x asc as tiebreaker', () => {
+    const nodes = [makeNode('c', 100, 300), makeNode('a', 200, 100), makeNode('b', 50, 100)];
+    const sorted = sortNodesByPosition(nodes, 'TB');
+    expect(sorted.map((n) => n.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('BT: sorts by y desc, then x asc as tiebreaker', () => {
+    const nodes = [makeNode('c', 100, 300), makeNode('a', 200, 100), makeNode('b', 50, 100)];
+    const sorted = sortNodesByPosition(nodes, 'BT');
+    expect(sorted.map((n) => n.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('LR: sorts by x asc, then y asc as tiebreaker', () => {
+    const nodes = [makeNode('c', 300, 100), makeNode('a', 100, 200), makeNode('b', 100, 50)];
+    const sorted = sortNodesByPosition(nodes, 'LR');
+    expect(sorted.map((n) => n.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('RL: sorts by x desc, then y asc as tiebreaker', () => {
+    const nodes = [makeNode('c', 300, 100), makeNode('a', 100, 200), makeNode('b', 100, 50)];
+    const sorted = sortNodesByPosition(nodes, 'RL');
+    expect(sorted.map((n) => n.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('does not mutate the input array', () => {
+    const nodes = [makeNode('b', 200, 0), makeNode('a', 0, 0)];
+    const original = [...nodes];
+    sortNodesByPosition(nodes, 'LR');
+    expect(nodes[0].id).toBe(original[0].id);
+    expect(nodes[1].id).toBe(original[1].id);
+  });
+
+  it('handles empty array', () => {
+    expect(sortNodesByPosition([], 'TB')).toEqual([]);
+  });
+
+  it('handles single node', () => {
+    const nodes = [makeNode('a', 100, 100)];
+    expect(sortNodesByPosition(nodes, 'LR')).toHaveLength(1);
+  });
+
+  it('stable-sorts nodes with identical positions', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 0, 0)];
+    const sorted = sortNodesByPosition(nodes, 'TB');
+    // Both share (0,0) — order should remain stable (JS sort is stable in V8)
+    expect(sorted).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyOps - sort_nodes
+// ---------------------------------------------------------------------------
+
+describe('applyOps - sort_nodes', () => {
+  it('sorts nodes top-to-bottom (TB)', () => {
+    const doc = makeBaseDoc();
+    // n2 is at y=100 (same as n1), but x=300 > n1 x=100 → n1 before n2
+    const result = applyOps(doc, [{ op: 'sort_nodes', direction: 'TB' }], mockId);
+    expect(result.success).toBe(true);
+    expect(result.document!.nodes.map((n) => n.id)).toEqual(['n1', 'n2']);
+  });
+
+  it('sorts nodes left-to-right (LR)', () => {
+    const doc = makeBaseDoc();
+    const result = applyOps(doc, [{ op: 'sort_nodes', direction: 'LR' }], mockId);
+    expect(result.success).toBe(true);
+    // n1 x=100, n2 x=300 → n1 first
+    expect(result.document!.nodes.map((n) => n.id)).toEqual(['n1', 'n2']);
+  });
+
+  it('reverses order when sorting right-to-left (RL)', () => {
+    const doc = makeBaseDoc();
+    const result = applyOps(doc, [{ op: 'sort_nodes', direction: 'RL' }], mockId);
+    expect(result.success).toBe(true);
+    // n2 x=300 > n1 x=100 → n2 first in RL
+    expect(result.document!.nodes.map((n) => n.id)).toEqual(['n2', 'n1']);
+  });
+
+  it('does not mutate the original document', () => {
+    const doc = makeBaseDoc();
+    const originalOrder = doc.nodes.map((n) => n.id);
+    applyOps(doc, [{ op: 'sort_nodes', direction: 'RL' }], mockId);
+    expect(doc.nodes.map((n) => n.id)).toEqual(originalOrder);
   });
 });

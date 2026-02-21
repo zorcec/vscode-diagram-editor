@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import { GetDiagramTool } from './GetDiagramTool';
+import { ReadDiagramTool } from './ReadDiagramTool';
 import { AddNodesTool } from './AddNodesTool';
 import { RemoveNodesTool } from './RemoveNodesTool';
 import { UpdateNodesTool } from './UpdateNodesTool';
@@ -16,6 +17,7 @@ export function registerDiagramTools(
   diagramService: DiagramService,
 ): void {
   const tools: [string, vscode.LanguageModelTool<any>][] = [
+    ['diagramflow_readDiagram', new ReadDiagramTool(diagramService)],
     ['diagramflow_getDiagram', new GetDiagramTool(diagramService)],
     ['diagramflow_addNodes', new AddNodesTool(diagramService)],
     ['diagramflow_removeNodes', new RemoveNodesTool(diagramService)],

@@ -199,6 +199,13 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
         );
         break;
 
+      case 'SORT_NODES':
+        await this.diagramService.applySemanticOps(
+          [{ op: 'sort_nodes', direction: msg.direction }],
+          document,
+        );
+        break;
+
       case 'EDGE_RECONNECTED':
         await this.diagramService.reconnectEdge(msg.id, msg.newSource, msg.newTarget, document);
         break;

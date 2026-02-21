@@ -7,6 +7,7 @@ import type {
   EdgeStyle,
   ArrowType,
   NodeColor,
+  LayoutDirection,
 } from '../types/DiagramDocument';
 
 export type SemanticOp =
@@ -17,6 +18,7 @@ export type SemanticOp =
       id: string;
       changes: Partial<Omit<DiagramNode, 'id'>>;
     }
+  | { op: 'sort_nodes'; direction: LayoutDirection }
   | {
       op: 'add_edge';
       edge: Partial<DiagramEdge> & { source: string; target: string };

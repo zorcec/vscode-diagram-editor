@@ -3,6 +3,7 @@ import type {
   DiagramNode,
   DiagramEdge,
   DiagramGroup,
+  LayoutDirection,
 } from '../types/DiagramDocument';
 import {
   DEFAULT_NODE_WIDTH,
@@ -61,6 +62,8 @@ function applySingleOp(
       return removeNode(doc, op.id);
     case 'update_node':
       return updateNode(doc, op.id, op.changes);
+    case 'sort_nodes':
+      return sortNodes(doc, op.direction);
     case 'add_edge':
       return addEdge(doc, op.edge, generateId);
     case 'remove_edge':
@@ -269,5 +272,51 @@ function updateGroup(
 
   const modified = structuredClone(doc);
   Object.assign(modified.groups![groupIndex], changes);
+  return { success: true, document: modified };
+}
+
+// ---------------------------------------------------------------------------
+// Node sorting by spatial position
+// ---------------------------------------------------------------------------
+
+/**
+ * Sorts nodes by their canvas position so the array order reflects the visual
+ * reading order of the diagram.
+ *
+ * - TB (top→bottom): sorted by y asc, then x asc as tiebreaker
+ * - BT (bottom→top): sorted by y desc, then x asc as tiebreaker
+ * - LR (left→right): sorted by x asc, then y asc as tiebreaker
+ * - RL (right→left): sorted by x desc, then y asc as tiebreaker
+ *
+ * Pure function — returns a new array without mutating the input.
+ */
+export function sortNodesByPosition(
+  nodes: readonly DiagramNode[],
+  direction: LayoutDirection,
+): DiagramNode[] {
+  const sorted = [...nodes];
+
+  sorted.sort((a, b) => {
+    switch (direction) {
+      case 'TB':
+        return a.y !== b.y ? a.y - b.y : a.x - b.x;
+      case 'BT':
+        return a.y !== b.y ? b.y - a.y : a.x - b.x;
+      case 'LR':
+        return a.x !== b.x ? a.x - b.x : a.y - b.y;
+      case 'RL':
+        return a.x !== b.x ? b.x - a.x : a.y - b.y;
+    }
+  });
+
+  return sorted;
+}
+
+function sortNodes(
+  doc: DiagramDocument,
+  direction: LayoutDirection,
+): OpResult {
+  const modified = structuredClone(doc);
+  modified.nodes = sortNodesByPosition(modified.nodes, direction);
   return { success: true, document: modified };
 }

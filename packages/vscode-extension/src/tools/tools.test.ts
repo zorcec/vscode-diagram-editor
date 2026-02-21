@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('vscode', () => import('../__mocks__/vscode'));
 
 import { GetDiagramTool } from './GetDiagramTool';
+import { ReadDiagramTool, buildReadableText } from './ReadDiagramTool';
 import { AddNodesTool } from './AddNodesTool';
 import { RemoveNodesTool } from './RemoveNodesTool';
 import { UpdateNodesTool } from './UpdateNodesTool';
@@ -523,8 +524,171 @@ describe('UpdateEdgesTool', () => {
   });
 });
 
+describe('ReadDiagramTool', () => {
+  it('prepareInvocation returns a reading message', async () => {
+    const svc = makeMockDiagramService();
+    const tool = new ReadDiagramTool(svc);
+
+    const result = await tool.prepareInvocation({ input: {} } as any, mockToken);
+
+    expect(result?.invocationMessage).toContain('Reading');
+  });
+
+  it('returns error message when no document is open', async () => {
+    const svc = makeMockDiagramService({
+      parseDocument: vi.fn().mockReturnValue(null),
+    });
+    const tool = new ReadDiagramTool(svc);
+
+    const result = await tool.invoke({ input: {} } as any, mockToken);
+
+    expect(resultText(result)).toContain('No .diagram file');
+  });
+
+  it('returns readable text when document is open', async () => {
+    const svc = makeMockDiagramService();
+    const tool = new ReadDiagramTool(svc);
+
+    const result = await tool.invoke({ input: {} } as any, mockToken);
+    const text = resultText(result);
+
+    expect(text).toContain('Node A');
+    expect(text).toContain('Node B');
+  });
+});
+
+describe('buildReadableText', () => {
+  it('uses agentContext summary when present', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'A test architecture summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [],
+      generatedAt: new Date().toISOString(),
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('A test architecture summary');
+  });
+
+  it('formats agentContext node index correctly', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [{ label: 'AuthService', type: 'service', notes: 'Handles auth' }],
+      edgeIndex: [],
+      groupIndex: [],
+      generatedAt: new Date().toISOString(),
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('AuthService');
+    expect(text).toContain('[service]');
+    expect(text).toContain('Handles auth');
+  });
+
+  it('formats agentContext edge index correctly', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [{ from: 'A', to: 'B', label: 'calls', protocol: 'HTTP' }],
+      groupIndex: [],
+      generatedAt: new Date().toISOString(),
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('A → B');
+    expect(text).toContain('"calls"');
+    expect(text).toContain('via HTTP');
+  });
+
+  it('formats agentContext group index correctly', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [{ group: 'Backend', members: ['AuthService', 'DB'] }],
+      generatedAt: new Date().toISOString(),
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('Backend');
+    expect(text).toContain('AuthService, DB');
+  });
+
+  it('includes insights when present in agentContext', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [],
+      insights: ['Circular dependency detected'],
+      generatedAt: new Date().toISOString(),
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('Insights');
+    expect(text).toContain('Circular dependency detected');
+  });
+
+  it('includes glossary when present in agentContext', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [],
+      glossary: { API: 'Application Programming Interface' },
+      generatedAt: new Date().toISOString(),
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('Glossary');
+    expect(text).toContain('API');
+    expect(text).toContain('Application Programming Interface');
+  });
+
+  it('falls back to raw doc description when agentContext absent', () => {
+    const doc = makeDoc();
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('Node A');
+    expect(text).toContain('Node B');
+    expect(text).toContain('Node A → Node B');
+  });
+
+  it('includes edge label in fallback mode', () => {
+    const doc = makeDoc();
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('"connects"');
+  });
+
+  it('returns empty-node message for empty diagram in fallback mode', () => {
+    const doc = makeDoc();
+    doc.nodes = [];
+    doc.edges = [];
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('No nodes');
+  });
+});
+
 describe('registerDiagramTools', () => {
-  it('registers all 7 tools', () => {
+  it('registers all 11 tools', () => {
     const svc = makeMockDiagramService();
     const context = {
       subscriptions: [] as any[],
@@ -533,10 +697,11 @@ describe('registerDiagramTools', () => {
 
     registerDiagramTools(context, svc as any);
 
-    expect(vscode.lm.registerTool).toHaveBeenCalledTimes(7);
+    expect(vscode.lm.registerTool).toHaveBeenCalledTimes(11);
     const toolNames = vi
       .mocked(vscode.lm.registerTool)
       .mock.calls.map((c) => c[0]);
+    expect(toolNames).toContain('diagramflow_readDiagram');
     expect(toolNames).toContain('diagramflow_getDiagram');
     expect(toolNames).toContain('diagramflow_addNodes');
     expect(toolNames).toContain('diagramflow_removeNodes');
@@ -544,5 +709,8 @@ describe('registerDiagramTools', () => {
     expect(toolNames).toContain('diagramflow_addEdges');
     expect(toolNames).toContain('diagramflow_removeEdges');
     expect(toolNames).toContain('diagramflow_updateEdges');
+    expect(toolNames).toContain('diagramflow_addGroups');
+    expect(toolNames).toContain('diagramflow_removeGroups');
+    expect(toolNames).toContain('diagramflow_updateGroups');
   });
 });

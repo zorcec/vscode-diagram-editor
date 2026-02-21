@@ -199,25 +199,26 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
     graph.onUpdateGroupProps,
   ]);
 
+  const toolbarProps = {
+    onAddNode: graph.onAddNode,
+    onAddNote: graph.onAddNote,
+    onAddGroup: graph.onAddGroup,
+    onAutoLayout: graph.onRequestLayout,
+    onAutoLayoutForce: graph.onRequestLayoutForce,
+    onSortNodes: () => graph.onSortNodes(graph.layoutDirection),
+    onExportSvg: graph.onExportSvg,
+    onExportPng: graph.onExportPng,
+    onOpenSvg: graph.onOpenSvg,
+    onUndo: graph.onUndo,
+    onRedo: graph.onRedo,
+    onToggleSearch: () => setShowSearch((v) => !v),
+    onToggleShortcuts: () => setShowShortcuts((v) => !v),
+    layoutDirection: graph.layoutDirection,
+    onSetLayoutDirection: graph.onSetLayoutDirection,
+  };
+
   return (
     <div className="canvas-container" data-testid="canvas-container">
-      <Toolbar
-        onAddNode={graph.onAddNode}
-        onAddNote={graph.onAddNote}
-        onAddGroup={graph.onAddGroup}
-        onAutoLayout={graph.onRequestLayout}
-        onAutoLayoutForce={graph.onRequestLayoutForce}
-        onExportSvg={graph.onExportSvg}
-        onExportPng={graph.onExportPng}
-        onOpenSvg={graph.onOpenSvg}
-        onUndo={graph.onUndo}
-        onRedo={graph.onRedo}
-        onToggleSearch={() => setShowSearch((v) => !v)}
-        onToggleShortcuts={() => setShowShortcuts((v) => !v)}
-        layoutDirection={graph.layoutDirection}
-        onSetLayoutDirection={graph.onSetLayoutDirection}
-      />
-
       {showSearch && (
         <SearchBar
           query={graph.searchQuery}
@@ -257,6 +258,7 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
           data-testid="react-flow-canvas"
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+          <Toolbar {...toolbarProps} />
           <MiniMap
             nodeColor={(n) =>
               MINIMAP_NODE_COLORS[n.data?.color as string] ?? '#555'

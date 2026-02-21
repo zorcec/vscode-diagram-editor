@@ -208,3 +208,126 @@ Spec:
 - When collapsed, hide child nodes and render group as a compact rectangle
 - Edges to/from children are rerouted to the group boundary
 - Store `collapsed?: boolean` on `DiagramGroup`
+
+---
+
+## New Ideas from Codebase Review (2025)
+
+### 16. Export to Mermaid [IMPLEMENT]
+**Priority: High**
+Mermaid is widely supported (GitHub, Notion, Confluence). Exporting a diagram to Mermaid markdown would make diagrams shareable without special tooling.
+
+Spec:
+- Add `EXPORT_MERMAID` flow: webview computes Mermaid text from doc and sends to extension
+- Or implement in extension (`DiagramService.mermaidFromDoc`) — extension already knows the document
+- Support `flowchart TB/LR` for directed graphs
+- Map groups to `subgraph` blocks
+- Register `diagramflow.exportMermaid` command
+- Add `↓ MMD` button to Toolbar export group
+
+---
+
+### 17. Node Templates / Quick-Add Panel [IMPLEMENT]
+**Priority: High**
+Re-typing common node labels and choosing shapes/colors is repetitive. A node template library (database, API gateway, frontend app, queue, service, etc.) would speed up diagram creation significantly.
+
+Spec:
+- Define a `NodeTemplate[]` array in config (label pattern, shape, color, notes template)
+- Toolbar button or `T` keyboard shortcut opens a quick-pick popup
+- Selecting a template inserts a new node with those defaults
+- Allow user-defined templates stored in VS Code workspace settings (`diagramflow.nodeTemplates`)
+
+---
+
+### 18. Alignment Guides (Smart Snap) [IMPLEMENT]
+**Priority: Medium**
+When dragging a node, show temporary alignment guide lines when the node's edges align with nearby nodes (similar to Figma/Excalidraw). This makes manual layout much cleaner.
+
+Spec:
+- During `onNodeDrag` (not just stop), compute horizontal and vertical alignment candidates from all other nodes
+- Draw SVG guide lines (dashed lines) at matching positions
+- Snap node position to the nearest guide within a threshold (e.g. 8px) before sending `NODE_DRAGGED`
+- Implemented entirely in the webview — no extension changes needed
+
+---
+
+### 19. Edge Bundling (Parallel Edge Deduplication) [IMPLEMENT]
+**Priority: Low**
+When multiple edges connect the same pair of nodes, they overlap and become invisible. Bundling them with slight offsets (or displaying a count badge on a single edge) cleans up the visual.
+
+Spec:
+- Detect parallel edges in `docToFlowEdges` (same source+target or reverse)
+- Assign each parallel edge a small perpendicular offset (bezier control point adjustment)
+- Alternatively, show a label like `×3` when ≥3 parallel edges exist
+
+---
+
+### 20. Diagram Auto-Documentation [IMPLEMENT]
+**Priority: Medium**
+Use the Copilot LLM to generate structured documentation from a diagram — architecture decision records, system overview docs, or README sections.
+
+Spec:
+- Register VS Code command `diagramflow.generateDocs`
+- Use `diagramflow_readDiagram` to get context, then ask LLM to generate one of: README section, ADR, C4 model description, or threat model
+- Output to a new VS Code editor tab as Markdown
+- Optionally persist the generated doc path in `diagram.meta`
+
+---
+
+### 21. Diagram Diff / Change Tracking [IMPLEMENT]
+**Priority: Medium**
+When a `.diagram` file is modified by an LLM agent or collaborator, it's hard to see what changed. A visual diff mode (highlight added/removed/changed nodes & edges) would help review.
+
+Spec:
+- Compare current document against git HEAD version using `git show HEAD:<file>`
+- Highlight added nodes/edges in green, removed in red, changed in yellow
+- Activated via `diagramflow.showDiff` command or a toolbar toggle
+- Reset highlight when leaving diff mode
+
+---
+
+### 22. Zoom to Selection [IMPLEMENT]
+**Priority: Low**
+After selecting one or more nodes, pressing a key (e.g. `Z`) should zoom and pan so the selected nodes fill the viewport. Useful for navigating large diagrams.
+
+Spec:
+- Listen for `z` key in `CanvasPanel` keyboard handler
+- If `selectedNodeId` or multiple selected nodes, call `rf.fitView({ nodes: selected, padding: 0.3 })`
+- Add to shortcuts panel list
+
+---
+
+### 23. Multi-Diagram Navigation Panel [IMPLEMENT]
+**Priority: Low**
+When a workspace has multiple `.diagram` files, switching between them requires the file explorer. A dedicated panel listing all `.diagram` files in the workspace would improve discoverability.
+
+Spec:
+- Register a `TreeDataProvider` for a DiagramFlow sidebar view
+- List all `*.diagram` files in the workspace
+- Clicking opens the file in the custom editor
+- Show node/edge/group counts as descriptions
+- Refresh on file create/delete
+
+---
+
+### 24. Performance: Virtual Rendering for Large Diagrams [INVESTIGATE]
+**Priority: Low**
+ReactFlow already virtualises node rendering to some degree, but very large diagrams (500+ nodes) may still lag. Investigate the ReactFlow `<NodeRenderer>` lazy-rendering options and measure performance benchmarks.
+
+Spec:
+- Profile current rendering with 200, 500, 1000 nodes
+- Evaluate `<ReactFlow onlyRenderVisibleElements>` prop
+- Consider splitting very large diagrams into linked sub-diagrams
+- Document findings in `information/` and implement if gain > 30%
+
+---
+
+### 25. Collaborative/Shared Cursors (Future / Research) [RESEARCH]
+**Priority: Very Low**
+If a team opens the same `.diagram` file via a shared workspace (VS Code Live Share), show collaborator cursors and selection on the canvas.
+
+Spec:
+- Requires VS Code Live Share API integration
+- Broadcast cursor positions over the Live Share channel
+- Render ghost cursors (colored rings) on the canvas for each collaborator
+- Highly experimental — document feasibility in `information/`

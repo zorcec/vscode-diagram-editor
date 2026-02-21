@@ -41,7 +41,14 @@ function makeMockDiagramService(): DiagramService {
     parseDocument: vi.fn().mockReturnValue(makeValidDoc()),
     applySemanticOps: vi.fn().mockResolvedValue({ success: true }),
     autoLayoutAll: vi.fn().mockResolvedValue(undefined),
+    autoLayoutForce: vi.fn().mockResolvedValue(undefined),
+    moveNode: vi.fn().mockResolvedValue(undefined),
+    moveNodes: vi.fn().mockResolvedValue(undefined),
+    moveGroup: vi.fn().mockResolvedValue(undefined),
+    reconnectEdge: vi.fn().mockResolvedValue(undefined),
     emptyDocument: vi.fn(),
+    undo: vi.fn().mockResolvedValue(undefined),
+    redo: vi.fn().mockResolvedValue(undefined),
   } as unknown as DiagramService;
 }
 
@@ -208,14 +215,9 @@ describe('DiagramEditorProvider', () => {
         position: { x: 50.7, y: 100.3 },
       });
 
-      expect(service.applySemanticOps).toHaveBeenCalledWith(
-        [
-          {
-            op: 'update_node',
-            id: 'n1',
-            changes: { x: 51, y: 100, pinned: true },
-          },
-        ],
+      expect(service.moveNode).toHaveBeenCalledWith(
+        'n1',
+        { x: 50.7, y: 100.3 },
         textDoc,
       );
     });
@@ -351,7 +353,7 @@ describe('DiagramEditorProvider', () => {
 
       await handler({ type: 'REQUEST_LAYOUT' });
 
-      expect(service.autoLayoutAll).toHaveBeenCalledWith(textDoc);
+      expect(service.autoLayoutAll).toHaveBeenCalledWith(textDoc, undefined);
     });
 
     it('handles UPDATE_NODE_PROPS message', async () => {

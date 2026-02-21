@@ -69,6 +69,11 @@ export type WebviewMessage =
       };
     }
   | {
+      /** Sort nodes array by spatial position in the given flow direction. */
+      type: 'SORT_NODES';
+      direction: LayoutDirection;
+    }
+  | {
       type: 'EDGE_RECONNECTED';
       id: string;
       newSource: string;
