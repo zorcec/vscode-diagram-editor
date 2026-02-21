@@ -1,11 +1,11 @@
 import { useRef, useEffect, useCallback } from 'react';
 
-type SearchBarProps = {
+interface SearchBarProps {
   query: string;
   matchCount: number;
   onQueryChange: (q: string) => void;
   onClose: () => void;
-};
+}
 
 export function SearchBar({ query, matchCount, onQueryChange, onClose }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);

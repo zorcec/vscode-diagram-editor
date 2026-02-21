@@ -3,13 +3,13 @@ import type { DiagramService } from '../DiagramService';
 import type { NodeShape, NodeColor } from '../types/DiagramDocument';
 
 interface AddNodesInput {
-  nodes: Array<{
+  nodes: {
     label: string;
     shape?: string;
     color?: string;
     notes?: string;
     group?: string;
-  }>;
+  }[];
 }
 
 export class AddNodesTool implements vscode.LanguageModelTool<AddNodesInput> {

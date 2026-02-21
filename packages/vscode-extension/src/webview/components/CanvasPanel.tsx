@@ -31,9 +31,9 @@ const MINIMAP_NODE_COLORS: Record<string, string> = {
   gray: '#666',
 };
 
-type CanvasPanelProps = {
+interface CanvasPanelProps {
   graph: GraphState;
-};
+}
 
 /** Inner component that has access to the ReactFlow instance. */
 function CanvasPanelInner({ graph }: CanvasPanelProps) {

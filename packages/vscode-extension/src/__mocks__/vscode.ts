@@ -47,7 +47,7 @@ export class Position {
 }
 
 export class WorkspaceEdit {
-  private edits: Array<{ uri: Uri; range: Range; newText: string }> = [];
+  private edits: { uri: Uri; range: Range; newText: string }[] = [];
 
   replace(uri: Uri, range: Range, newText: string): void {
     this.edits.push({ uri, range, newText });
@@ -73,6 +73,7 @@ export class LanguageModelTextPart {
 export const workspace = {
   applyEdit: vi.fn().mockResolvedValue(true),
   onDidChangeTextDocument: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+  openTextDocument: vi.fn().mockResolvedValue({ getText: vi.fn().mockReturnValue('{}') }),
   workspaceFolders: [],
   fs: {
     writeFile: vi.fn().mockResolvedValue(undefined),

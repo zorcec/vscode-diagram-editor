@@ -4,7 +4,7 @@ import type { DiagramNodeData } from '../lib/docToFlow';
 import type { DiagramGroup, NodeShape, NodeColor, EdgeStyle, ArrowType } from '../../types/DiagramDocument';
 import { NODE_SHAPES, NODE_COLORS, EDGE_STYLES, ARROW_TYPES } from '../../types/DiagramDocument';
 
-type NodeProps = {
+interface NodeProps {
   kind: 'node';
   node: Node<DiagramNodeData>;
   groups: DiagramGroup[];
@@ -12,21 +12,21 @@ type NodeProps = {
     id: string,
     changes: { label?: string; shape?: NodeShape; color?: NodeColor; notes?: string; group?: string | null; pinned?: boolean },
   ) => void;
-};
+}
 
-type EdgeProps = {
+interface EdgeProps {
   kind: 'edge';
   edge: Edge;
   onUpdateEdge: (id: string, changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean }) => void;
-};
+}
 
-type GroupProps = {
+interface GroupProps {
   kind: 'group';
   group: DiagramGroup;
   onUpdateGroup: (id: string, changes: { label?: string; color?: NodeColor }) => void;
-};
+}
 
-type EmptyProps = { kind: 'none' };
+interface EmptyProps { kind: 'none' }
 
 export type PropertiesPanelInput = NodeProps | EdgeProps | GroupProps | EmptyProps;
 

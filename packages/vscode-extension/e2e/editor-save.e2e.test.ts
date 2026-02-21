@@ -34,7 +34,7 @@ test.describe('Editor Save', () => {
     expect(afterDoc.edges).toHaveLength(originalDoc.edges.length);
   });
 
-  test('empty diagram file is valid JSON', async ({ vscPage }) => {
+  test('empty diagram file is valid JSON', async ({}) => {
     const filePath = path.resolve(
       __dirname,
       'test-project',
@@ -48,7 +48,7 @@ test.describe('Editor Save', () => {
     expect(doc.edges).toEqual([]);
   });
 
-  test('complex diagram preserves groups', async ({ vscPage }) => {
+  test('complex diagram preserves groups', async ({}) => {
     const filePath = path.resolve(
       __dirname,
       'test-project',

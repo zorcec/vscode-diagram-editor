@@ -26,18 +26,18 @@ export interface VSCodePage {
 /**
  * Worker-scoped fixtures (shared across tests in same worker)
  */
-type VSCodeWorkerFixtures = {
+interface VSCodeWorkerFixtures {
 	vscodeServer: VSCodeDesktopServer;
 	vscodeBrowser: Browser;
-};
+}
 
 /**
  * Test-scoped fixtures (unique per test)
  */
-type VSCodeTestFixtures = {
+interface VSCodeTestFixtures {
 	vscPage: VSCodePage;
 	testStartTime: number;
-};
+}
 
 /**
  * Extended test with VS Code fixtures

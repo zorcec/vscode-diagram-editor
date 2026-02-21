@@ -3,14 +3,14 @@ import type { DiagramService } from '../DiagramService';
 import type { NodeShape, NodeColor } from '../types/DiagramDocument';
 
 interface UpdateNodesInput {
-  updates: Array<{
+  updates: {
     id: string;
     label?: string;
     shape?: string;
     color?: string;
     notes?: string;
     group?: string;
-  }>;
+  }[];
 }
 
 export class UpdateNodesTool implements vscode.LanguageModelTool<UpdateNodesInput> {

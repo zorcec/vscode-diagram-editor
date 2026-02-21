@@ -2,6 +2,11 @@ import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import type { AgentContext, DiagramDocument } from '../types/DiagramDocument';
 
+interface ReadDiagramInput {
+  /** Workspace-absolute path to the .diagram file to read. */
+  filePath: string;
+}
+
 /**
  * LLM-optimised diagram reader.
  *
@@ -10,28 +15,42 @@ import type { AgentContext, DiagramDocument } from '../types/DiagramDocument';
  * comprehension.  No coordinates, no opaque IDs — just the semantic content
  * the model needs to understand the diagram and reason about the architecture.
  *
+ * `filePath` is required so the agent always specifies which .diagram file to read.
  * Use this tool first when asked to review, explain, or reason about a diagram.
  * Use `diagramflow_getDiagram` when you need IDs to update the diagram.
  */
-export class ReadDiagramTool implements vscode.LanguageModelTool<Record<string, never>> {
+export class ReadDiagramTool implements vscode.LanguageModelTool<ReadDiagramInput> {
   constructor(private readonly diagramService: DiagramService) {}
 
   async prepareInvocation(
-    _options: vscode.LanguageModelToolInvocationPrepareOptions<Record<string, never>>,
+    options: vscode.LanguageModelToolInvocationPrepareOptions<ReadDiagramInput>,
     _token: vscode.CancellationToken,
   ) {
-    return { invocationMessage: 'Reading diagram architecture…' };
+    const fileName = options.input.filePath.split('/').pop() ?? options.input.filePath;
+    return { invocationMessage: `Reading diagram architecture from ${fileName}…` };
   }
 
   async invoke(
-    _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
+    options: vscode.LanguageModelToolInvocationOptions<ReadDiagramInput>,
     _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
-    const doc = this.diagramService.parseDocument();
+    const uri = vscode.Uri.file(options.input.filePath);
+    let textDoc: vscode.TextDocument;
+    try {
+      textDoc = await vscode.workspace.openTextDocument(uri);
+    } catch {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          `Cannot open file: ${options.input.filePath}. Make sure the path exists and is a .diagram file.`,
+        ),
+      ]);
+    }
+
+    const doc = this.diagramService.parseDocument(textDoc);
     if (!doc) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          'No .diagram file is currently open. Open a .diagram file first.',
+          `Cannot parse diagram at: ${options.input.filePath}`,
         ),
       ]);
     }

@@ -40,6 +40,17 @@ export class VSCodeDesktopServer {
 	async start(): Promise<string> {
 		const startTime = Date.now();
 
+		// On Linux, VS Code Desktop (Electron) requires a display server.
+		// If DISPLAY is not set we will likely crash during spawn.
+		// Run via `npm run e2e:xvfb` to let xvfb-run provide a virtual display.
+		if (process.platform === 'linux' && !process.env.DISPLAY) {
+			console.warn(
+				'WARNING: DISPLAY environment variable is not set on Linux. ' +
+				'VS Code Desktop requires a display. ' +
+				'Run `npm run e2e:xvfb` to use a virtual framebuffer, or set DISPLAY manually.'
+			);
+		}
+
 		const extensionDevelopmentPath = path.resolve(__dirname, '..');
 		const folderPath = path.resolve(__dirname, 'test-project');
 

@@ -3,7 +3,7 @@ import type { DiagramService } from '../DiagramService';
 import type { EdgeStyle, ArrowType } from '../types/DiagramDocument';
 
 interface UpdateEdgesInput {
-  updates: Array<{
+  updates: {
     id: string;
     label?: string;
     style?: string;
@@ -11,7 +11,7 @@ interface UpdateEdgesInput {
     animated?: boolean;
     source?: string;
     target?: string;
-  }>;
+  }[];
 }
 
 export class UpdateEdgesTool implements vscode.LanguageModelTool<UpdateEdgesInput> {

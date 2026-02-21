@@ -1,233 +1,10 @@
 
-## ReactFlow Free Feature Research & Ideas
+## Pending Implementation
 
-> Research date: 2025
-> Library: `@xyflow/react ^12.10.1`
-> License: MIT — all library features are free; "Pro" is only for access to premium example code and support.
+> Ideas that have been implemented are removed from this list.
+> Ideas marked **[SKIP]** are archived at the bottom.
 
-### Available Free Components Not Yet Used
-
-| Component | What It Does | Value for DiagramFlow |
-|---|---|---|
-| `NodeResizer` | Drag handles on corners/edges to resize a node | High — group nodes could be manually resized |
-| `MiniMap` | Bird's-eye view navigator in a corner | Medium — useful for large diagrams |
-| `Controls` | Zoom in/out/fit/lock buttons panel | Medium — could replace or augment current zoom UX |
-| `Panel` | Overlay UI panel anchored to a corner/side | Low — could move Toolbar into a floating Panel |
-
-### Available Free Interactions / Props Not Yet Used
-
-| Feature | What It Does | Value for DiagramFlow |
-|---|---|---|
-| `reconnectable` on edges | Drag an existing edge endpoint to reconnect it to a different node | High — makes edge management far more intuitive |
-| `isValidConnection` | Callback before edge creation; return false to block it | Medium — enforce domain constraints (no self-loops, type checks) |
-| `selectionOnDrag` / box-select | Shift-drag canvas to select multiple nodes by drawing a rectangle | High — already built-in, just needs prop enabled |
-| `connectionMode: 'loose'` | Allow connecting to any handle, not just matching source→target | Medium — depends on diagram semantics |
-| Multiple `Handle` per node | Add directional handles (top, bottom, left, right) | Medium — gives users control over which side edges connect |
-
-### Available Free Hooks Not Yet Used
-
-| Hook | What It Does | Value for DiagramFlow |
-|---|---|---|
-| `useKeyPress` | Declarative keyboard shortcut detection | Medium — clean up manual keydown listeners |
-| `useUpdateNodeInternals` | Force a node to re-measure handles after content change | Low — needed if node sizes change dynamically |
-| `useViewport` | Read current zoom/pan | Low — could show zoom % in status bar |
-
----
-
-## Feature Ideas Derived From Research [IMPLEMNT]
-
-### 1. Node Resizing (Groups & Regular Nodes)
-**Priority: High**
-NodeResizer from @xyflow/react provides resize handles at no extra cost. Groups especially benefit from manual resizing when the auto-computed bounding box is wrong or when the user wants to pre-size an empty group before adding nodes.
-
-Spec:
-- Enable NodeResizer inside DiagramGroupNode.tsx (group type only initially)
-- On resize end (onResizeEnd), send UPDATE_GROUP_PROPS message with width and height
-- Store width? and height? on DiagramGroup (override auto-computed bounds)
-- Apply stored size in docToFlowGroupNodes when present
-- LM tool diagramflow_updateGroups already exists; add width/height to its schema
-
----
-
-### 2. Edge Reconnection [IMPLEMENT]
-**Priority: High**
-Setting reconnectable on edge components lets users drag endpoints to reconnect edges. This is a purely declarative feature.
-
-Spec:
-- Add reconnectable prop to the custom edge component
-- Handle the onReconnect and onReconnectEnd callbacks in useGraphState
-- On reconnect, send a new message type EDGE_RECONNECTED: { id, newSource, newTarget }
-- In the extension, apply update_edge { id, changes: { from, to } } semantic op (already supported)
-
----
-
-### 3. Undo / Redo [IMPLEMENT]
-**Priority: High**
-ReactFlow does not ship undo/redo built-in but provides the state primitives to build it. The extension already has a clean document model, making a history stack straightforward.
-
-Spec:
-- Maintain a circular history buffer of DiagramDocument snapshots (max 50 entries) in DiagramService
-- On every write (updateDocumentContent), push the previous document to the stack
-- Expose undo() / redo() methods on DiagramService
-- Register VS Code commands diagramflow.undo / diagramflow.redo (Ctrl+Z / Ctrl+Shift+Z)
-- Also handle Ctrl+Z / Ctrl+Y in the webview and send an UNDO / REDO message to the extension
-
----
-
-### 4. Copy / Paste Nodes [IMPLEMENT]
-**Priority: Medium**
-Standard clipboard UX expected in any visual editor.
-
-Spec:
-- On Ctrl+C in webview: store selected node data in local clipboard state
-- On Ctrl+V: create copies of nodes with offset (+20px, +20px) and new IDs; send ADD_NODES batch message
-- Group membership preserved when copying inside a group context; stripped when pasting elsewhere
-- LM agent does not need paste; this is pure UX
-
----
-
-### 5. Connection Validation (isValidConnection) [SKIP]
-**Priority: Medium**
-Prevent invalid edges before they are created (e.g. self-loops, duplicate edges).
-
-Spec:
-- Pass isValidConnection callback to ReactFlow component
-- Default rules: block self-loops (source === target), block duplicate edges
-- Future: surface node type metadata and allow per-type connection constraints
-
----
-
-### 6. Box-Select (Selection on Drag) [SKIP]
-**Priority: Medium**
-Enable built-in drag-to-select rectangle when user holds Shift and drags on empty canvas.
-
-Spec:
-- Add selectionOnDrag prop to ReactFlow
-- Add selectionKeyCode="Shift" for modifier-drag selection (vs pan)
-- Combine with multiSelectionKeyCode="Control" for additive selection
-
----
-
-### 7. MiniMap
-**Priority: Low**
-Add a bird's-eye navigator for large diagrams. Toggle visibility from Toolbar.
-
-Spec:
-- Add MiniMap component from @xyflow/react inside CanvasPanel.tsx
-- Style minimap nodes to match diagram node colors
-- Add Toolbar toggle button (M shortcut) to show/hide
-
----
-
-### 8. Directional Handles on Nodes [IMPLEMENT]
-**Priority: Low**
-Adding four directional handles (top/right/bottom/left) gives users control over which side edges originate/terminate.
-
-Spec:
-- Add four Handle components to DiagramNode.tsx (top, right, bottom, left)
-- Mark as both source and target
-- Show handles only on hover via CSS
-- No data model change required for edges
-
----
-
-## Ideas from Implementation Experience
-
-### 9. Panning Help Tooltip / Hint [IMPLEMENT]
-**Priority: Low**
-With `selectionOnDrag` enabled, left-click drag now creates a selection rectangle and right-click drag pans. New users may not know about right-click-to-pan. A first-run overlay or status bar hint ("Drag to select • Right-drag or scroll to pan") would help discoverability.
-
-Spec:
-- Show a dismissible toast/overlay on first open sourced from VS Code `globalState`
-- Or surface a permanent subtle hint in the toolbar
-
----
-
-### 10. Keyboard Shortcuts Panel [IMPLEMENT]
-**Priority: Low**
-The extension already has several keyboard shortcuts (N = add node, G = add group, L = layout, Delete = remove). A discoverable shortcuts panel would help new users.
-
-Spec:
-- Add a `?` toolbar button that opens a VS Code quick-pick or webview panel listing all shortcuts
-- Include mouse shortcuts: right-drag to pan, drag to box-select, Shift+click/drag for additive selection
-
----
-
-### 11. Auto-Layout Direction Toggle [IMPLEMENT]
-**Priority: Medium**
-The auto-layout currently uses top-to-bottom (TB) direction matching the sarah-ai architecture style. Some diagrams (left-to-right pipelines, swimlane diagrams) naturally flow LR. A toolbar button or `LayoutConfig` option to select direction before triggering layout would give users more control.
-
-Spec:
-- Add `LayoutDirection` to toolbar (TB/LR toggle, or a dropdown with TB/LR/BT/RL)
-- Pass selected direction to `REQUEST_LAYOUT` message and on to `computeFullLayout`
-- Persist last-used direction in diagram `meta` (already has extension point in DiagramDocument)
-- Integrate in nicely into the layout button UI (e.g. a split button with direction options)
-
----
-
-### 12. Fit View After Auto-Layout [IMPLEMENT]
-**Priority: Medium**
-After triggering auto-layout (`L`), the nodes may shift far from the current viewport. Automatically calling `fitView()` after layout completes ensures users always see the result.
-
-Spec:
-- In webview, after receiving a `DOCUMENT_UPDATED` message that follows a layout request, call `rf.fitView()` using `useReactFlow()` hook
-- Needs coordination: track that a layout was requested (e.g., a `layoutPending` flag in `useGraphState`) and reset it when the document arrives
-
----
-
-### 13. Node Search / Filter [IMPLEMENT]
-**Priority: Medium**
-In large diagrams finding a specific node by label requires scrolling. A search bar that highlights matching nodes and pans/zooms to them would significantly improve usability for complex diagrams.
-
-Spec:
-- Add a search input to the Toolbar (Ctrl+F shortcut)
-- Filter/highlight nodes whose label matches the query
-- On Enter, fit-view to the first matching node
-- Clear search on Escape
-
----
-
-### 14. Sticky Notes / Annotations [IMPLEMENT]
-**Priority: Low**
-Free-form text annotations (sticky note style) help users add explanatory text near diagram sections without connecting it to a node.
-
-Spec:
-- New node type: `diagramNote` rendered as a yellow/pastel sticky note
-- No connection handles (annotation only)
-- Add via toolbar button or keyboard shortcut
-- LM tool `diagramflow_addNodes` can include `shape: 'note'` as variant
-
----
-
-### 15. Collapse / Expand Groups [IMPLEMENT]
-**Priority: Medium**
-Groups with many children can clutter the canvas. Collapsing a group into a single representative node (showing only its label) would keep large diagrams readable.
-
-Spec:
-- Toggle collapse state on group double-click
-- When collapsed, hide child nodes and render group as a compact rectangle
-- Edges to/from children are rerouted to the group boundary
-- Store `collapsed?: boolean` on `DiagramGroup`
-
----
-
-## New Ideas from Codebase Review (2025)
-
-### 16. Export to Mermaid [IMPLEMENT]
-**Priority: High**
-Mermaid is widely supported (GitHub, Notion, Confluence). Exporting a diagram to Mermaid markdown would make diagrams shareable without special tooling.
-
-Spec:
-- Add `EXPORT_MERMAID` flow: webview computes Mermaid text from doc and sends to extension
-- Or implement in extension (`DiagramService.mermaidFromDoc`) — extension already knows the document
-- Support `flowchart TB/LR` for directed graphs
-- Map groups to `subgraph` blocks
-- Register `diagramflow.exportMermaid` command
-- Add `↓ MMD` button to Toolbar export group
-
----
-
-### 17. Node Templates / Quick-Add Panel [IMPLEMENT]
+### 1. Node Templates / Quick-Add Panel
 **Priority: High**
 Re-typing common node labels and choosing shapes/colors is repetitive. A node template library (database, API gateway, frontend app, queue, service, etc.) would speed up diagram creation significantly.
 
@@ -239,7 +16,7 @@ Spec:
 
 ---
 
-### 18. Alignment Guides (Smart Snap) [IMPLEMENT]
+### 2. Alignment Guides (Smart Snap)
 **Priority: Medium**
 When dragging a node, show temporary alignment guide lines when the node's edges align with nearby nodes (similar to Figma/Excalidraw). This makes manual layout much cleaner.
 
@@ -251,7 +28,7 @@ Spec:
 
 ---
 
-### 19. Edge Bundling (Parallel Edge Deduplication) [IMPLEMENT]
+### 3. Edge Bundling (Parallel Edge Deduplication)
 **Priority: Low**
 When multiple edges connect the same pair of nodes, they overlap and become invisible. Bundling them with slight offsets (or displaying a count badge on a single edge) cleans up the visual.
 
@@ -262,7 +39,7 @@ Spec:
 
 ---
 
-### 20. Diagram Auto-Documentation [IMPLEMENT]
+### 4. Diagram Auto-Documentation
 **Priority: Medium**
 Use the Copilot LLM to generate structured documentation from a diagram — architecture decision records, system overview docs, or README sections.
 
@@ -274,7 +51,7 @@ Spec:
 
 ---
 
-### 21. Diagram Diff / Change Tracking [IMPLEMENT]
+### 5. Diagram Diff / Change Tracking
 **Priority: Medium**
 When a `.diagram` file is modified by an LLM agent or collaborator, it's hard to see what changed. A visual diff mode (highlight added/removed/changed nodes & edges) would help review.
 
@@ -286,7 +63,7 @@ Spec:
 
 ---
 
-### 22. Zoom to Selection [IMPLEMENT]
+### 6. Zoom to Selection
 **Priority: Low**
 After selecting one or more nodes, pressing a key (e.g. `Z`) should zoom and pan so the selected nodes fill the viewport. Useful for navigating large diagrams.
 
@@ -297,7 +74,7 @@ Spec:
 
 ---
 
-### 23. Multi-Diagram Navigation Panel [IMPLEMENT]
+### 7. Multi-Diagram Navigation Panel
 **Priority: Low**
 When a workspace has multiple `.diagram` files, switching between them requires the file explorer. A dedicated panel listing all `.diagram` files in the workspace would improve discoverability.
 
@@ -310,7 +87,7 @@ Spec:
 
 ---
 
-### 24. Performance: Virtual Rendering for Large Diagrams [INVESTIGATE]
+### 8. Performance: Virtual Rendering for Large Diagrams
 **Priority: Low**
 ReactFlow already virtualises node rendering to some degree, but very large diagrams (500+ nodes) may still lag. Investigate the ReactFlow `<NodeRenderer>` lazy-rendering options and measure performance benchmarks.
 
@@ -322,7 +99,7 @@ Spec:
 
 ---
 
-### 25. Collaborative/Shared Cursors (Future / Research) [RESEARCH]
+### 9. Collaborative/Shared Cursors (Future / Research)
 **Priority: Very Low**
 If a team opens the same `.diagram` file via a shared workspace (VS Code Live Share), show collaborator cursors and selection on the canvas.
 
@@ -331,3 +108,117 @@ Spec:
 - Broadcast cursor positions over the Live Share channel
 - Render ghost cursors (colored rings) on the canvas for each collaborator
 - Highly experimental — document feasibility in `information/`
+
+---
+
+## LLM / Agent Context Enrichment Ideas
+
+> Research question: *What additional information can be stored in the diagram so an LLM agent understands the project architecture more accurately and makes better decisions?*
+
+### 10. Semantic Node Type Tags
+**Priority: High**
+Assign each node a machine-readable semantic type (`service`, `database`, `queue`, `ui`, `gateway`, `cache`, `worker`, `external`) stored in `DiagramNode.nodeType`. An LLM can then reason about architecture patterns (e.g., "no caching layer between gateway and DB") without parsing free-text labels.
+
+Spec:
+- Add optional `nodeType?: string` to `DiagramNode` and the JSON schema
+- Surface as a dropdown in the PropertiesPanel (well-known types + free text)
+- Include in `agentContext.nodeIndex` entries
+- Add `nodeType` to `diagramflow_addNodes` / `diagramflow_updateNodes` LM tool schemas
+- Extend `generateAgentContext` to group nodes by type in the summary
+
+---
+
+### 11. C4 Architecture Level Classification
+**Priority: Medium**
+The C4 model (Context → Container → Component → Code) is the standard scope hierarchy. Tagging nodes with their C4 level lets the LLM know whether `AuthService` is a whole microservice container or an internal module.
+
+Spec:
+- Add optional `c4Level?: 'context' | 'container' | 'component' | 'code'` to `DiagramNode`
+- Render as a small badge on the node (coloured pill)
+- Include in `agentContext.summary` as a breakdown by level
+- LM tool schemas updated to accept `c4Level`
+
+---
+
+### 12. Technology / Stack Metadata
+**Priority: Medium**
+Knowing that `AuthService` is `Go` and `Frontend` is `React/TypeScript` is critical context for agents writing code. Free-text `notes` is lossy; a structured `tech` field is precise.
+
+Spec:
+- Add optional `tech?: string` to `DiagramNode` (e.g. `"TypeScript"`, `"PostgreSQL"`, `"Redis"`)
+- Render as a chip/tag below the node label or in the tooltip
+- Include in `agentContext.nodeIndex[].tech`
+- PropertiesPanel: show a text input with autocomplete from a built-in well-known list
+
+---
+
+### 13. Source Code Path Linking
+**Priority: Medium**
+When an LLM agent traces an issue, it needs to jump from a diagram node to actual source files. Linking a node to a workspace-relative glob pattern makes this trivial.
+
+Spec:
+- Add optional `sourcePath?: string` to `DiagramNode` (e.g. `"src/auth/**"`, `"packages/gateway/src/index.ts"`)
+- Register VS Code command `diagramflow.openNodeSource` that opens the linked path
+- Show "Open Source" in the NodeToolbar when `sourcePath` is set
+- Include paths in `agentContext.nodeIndex` so LLM agents can cite them directly
+
+---
+
+### 14. Edge Semantics (Protocol / Data Flow)
+**Priority: Medium**
+Edges currently only carry style/arrow/label. Knowing *how* nodes communicate (sync HTTP, async Kafka event, SQL query, gRPC) enables the LLM to reason about latency, failure modes, and coupling.
+
+Spec:
+- Add optional `protocol?: string` to `DiagramEdge` (e.g. `"HTTP"`, `"gRPC"`, `"Kafka"`, `"SQL"`, `"WebSocket"`)
+- Show protocol as a small badge on the edge midpoint
+- Include in `agentContext.edgeIndex[].protocol`
+- PropertiesPanel edge section: protocol dropdown + free-text fallback
+
+---
+
+### 15. Node Lifecycle Status
+**Priority: Low**
+Architecture diagrams go stale. Tagging nodes with their lifecycle status (`planned`, `in-progress`, `stable`, `deprecated`, `external`) helps both humans and LLMs distinguish real vs aspirational components.
+
+Spec:
+- Add optional `status?: 'planned' | 'in-progress' | 'stable' | 'deprecated' | 'external'` to `DiagramNode`
+- Render as visual indicator (dimmed opacity for deprecated, dashed border for planned)
+- Include in `agentContext.nodeIndex[].status`
+- LM tool schemas updated accordingly
+
+---
+
+### 16. Diagram-Level Metadata (Scope, Owner, Version)
+**Priority: Low**
+Richer `meta` fields give the LLM context *before* it reads any nodes — the who/what/why of the diagram.
+
+Spec:
+- Add `meta.description?: string` — author-written paragraph describing the diagram scope
+- Add `meta.team?: string` — owning team name
+- Add `meta.docVersion?: string` — semantic version of the diagram document
+- Include all fields at the top of `agentContext.summary`
+- Expose via a "Diagram Properties" panel or settings command
+
+---
+
+### 17. Topology Hints for LLM (Entry Points, Critical Paths)
+**Priority: Low**
+Surface structural insights — entry points (nodes with no inbound edges), leaf nodes, and longest directed paths — directly in `agentContext` so the LLM knows where to focus in large diagrams.
+
+Spec:
+- Compute topology analysis in `generateAgentContext`:
+  - `entryPoints`: node IDs with in-degree 0
+  - `leafNodes`: node IDs with out-degree 0
+  - `longestPath`: sequence of node IDs on the longest directed path
+- Include as a `topology` block in `agentContext`
+- No UI required — purely consumed by LLM tool callers
+
+---
+
+## Archived (Skipped / Won't Implement)
+
+### Connection Validation (isValidConnection)
+Prevent invalid edges before creation. Deferred — the open-ended model is intentional for fast prototyping.
+
+### Box-Select (Selection on Drag)
+Shift-drag multi-selection via ReactFlow `selectionOnDrag`. Deferred — conflicts with panning UX and existing Shift+click selection is sufficient.

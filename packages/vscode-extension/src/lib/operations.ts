@@ -281,6 +281,51 @@ function updateGroup(
 // Node sorting by spatial position
 // ---------------------------------------------------------------------------
 
+const SORT_GRID_GAP = 40;
+
+/**
+ * Computes new node positions arranged in a compact reading-order grid.
+ * Nodes are laid out in a square-ish grid so that their array order matches
+ * the visual reading order for the given direction.
+ *
+ * Pure function — returns new node objects without mutating the input.
+ */
+export function applyGridLayout(
+  sortedNodes: readonly DiagramNode[],
+  direction: LayoutDirection,
+  startX: number,
+  startY: number,
+): DiagramNode[] {
+  if (sortedNodes.length === 0) return [];
+
+  const colCount = Math.max(1, Math.ceil(Math.sqrt(sortedNodes.length)));
+  const stepW = DEFAULT_NODE_WIDTH + SORT_GRID_GAP;
+  const stepH = DEFAULT_NODE_HEIGHT + SORT_GRID_GAP;
+
+  return sortedNodes.map((node, i) => {
+    let x: number, y: number;
+    switch (direction) {
+      case 'TB':
+      case 'BT': {
+        const col = i % colCount;
+        const row = Math.floor(i / colCount);
+        x = startX + col * stepW;
+        y = startY + row * stepH;
+        break;
+      }
+      case 'LR':
+      case 'RL': {
+        const row = i % colCount;
+        const col = Math.floor(i / colCount);
+        x = startX + col * stepW;
+        y = startY + row * stepH;
+        break;
+      }
+    }
+    return { ...node, x, y };
+  });
+}
+
 /**
  * Sorts groups by their canvas position (using stored x/y or child bounding box).
  * Pure function — returns a new array without mutating the input.
@@ -361,16 +406,28 @@ function sortNodes(
   const modified = structuredClone(doc);
 
   if (groupId) {
-    // Sort only nodes inside the specified group; leave other nodes in place.
+    // Sort only nodes inside the specified group; reposition in reading order.
     const inside = modified.nodes.filter((n) => n.group === groupId);
     const outside = modified.nodes.filter((n) => n.group !== groupId);
-    modified.nodes = [...outside, ...sortNodesByPosition(inside, direction)];
+    const sorted = sortNodesByPosition(inside, direction);
+
+    const startX = inside.length > 0 ? Math.min(...inside.map((n) => n.x)) : 0;
+    const startY = inside.length > 0 ? Math.min(...inside.map((n) => n.y)) : 0;
+    const repositioned = applyGridLayout(sorted, direction, startX, startY);
+
+    modified.nodes = [...outside, ...repositioned];
   } else {
-    // Sort top-level (ungrouped) nodes by position; keep grouped nodes in place.
+    // Sort top-level (ungrouped) nodes by position and reposition in reading order.
     // Also sort the groups array itself by position.
     const topLevel = modified.nodes.filter((n) => !n.group);
     const grouped = modified.nodes.filter((n) => n.group);
-    modified.nodes = [...sortNodesByPosition(topLevel, direction), ...grouped];
+    const sorted = sortNodesByPosition(topLevel, direction);
+
+    const startX = topLevel.length > 0 ? Math.min(...topLevel.map((n) => n.x)) : 0;
+    const startY = topLevel.length > 0 ? Math.min(...topLevel.map((n) => n.y)) : 0;
+    const repositioned = applyGridLayout(sorted, direction, startX, startY);
+
+    modified.nodes = [...repositioned, ...grouped];
     modified.groups = sortGroupsByPosition(modified.groups ?? [], modified.nodes, direction);
   }
 

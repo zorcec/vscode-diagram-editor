@@ -178,7 +178,7 @@ export interface AgentContext {
    * Compact node list with semantic metadata.
    * All optional fields are omitted when empty to keep the block compact.
    */
-  nodeIndex: Array<{
+  nodeIndex: {
     id: string;
     label: string;
     /** C4-inspired component role */
@@ -195,12 +195,12 @@ export interface AgentContext {
     securityClassification?: SecurityClassification;
     /** Environment scope */
     deploymentEnvironment?: DeploymentEnvironment;
-  }>;
+  }[];
   /**
    * Compact edge list using human-readable labels (not IDs).
    * All optional fields are omitted when not set to keep the block compact.
    */
-  edgeIndex: Array<{
+  edgeIndex: {
     from: string;
     to: string;
     label?: string;
@@ -209,9 +209,9 @@ export interface AgentContext {
     protocol?: string;
     /** Data types / schema names transported over this edge */
     dataTypes?: string[];
-  }>;
+  }[];
   /** Group membership map: groupLabel → nodeLabels[] */
-  groupIndex: Array<{ group: string; members: string[] }>;
+  groupIndex: { group: string; members: string[] }[];
   /**
    * Domain glossary from meta.glossary.
    * Agents use this to interpret ambiguous domain terms in node labels.

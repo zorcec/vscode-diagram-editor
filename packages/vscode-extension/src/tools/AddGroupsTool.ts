@@ -3,10 +3,10 @@ import type { DiagramService } from '../DiagramService';
 import type { NodeColor } from '../types/DiagramDocument';
 
 interface AddGroupsInput {
-  groups: Array<{
+  groups: {
     label: string;
     color?: string;
-  }>;
+  }[];
 }
 
 export class AddGroupsTool implements vscode.LanguageModelTool<AddGroupsInput> {

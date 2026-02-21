@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { applyOps, createEmptyDocument, sortNodesByPosition, sortGroupsByPosition } from './operations';
+import { applyOps, applyGridLayout, createEmptyDocument, sortNodesByPosition, sortGroupsByPosition } from './operations';
 import type { DiagramDocument } from '../types/DiagramDocument';
+import { DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../types/DiagramDocument';
 import type { SemanticOp } from '../types/operations';
 
 let idCounter = 0;
@@ -821,5 +822,122 @@ describe('sortGroupsByPosition', () => {
 
   it('handles empty groups array', () => {
     expect(sortGroupsByPosition([], nodes, 'TB')).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyGridLayout (pure function)
+// ---------------------------------------------------------------------------
+
+describe('applyGridLayout', () => {
+  const STEP_W = DEFAULT_NODE_WIDTH + 40; // 200
+  const STEP_H = DEFAULT_NODE_HEIGHT + 40; // 88
+
+  it('returns empty array for empty input', () => {
+    expect(applyGridLayout([], 'TB', 0, 0)).toEqual([]);
+  });
+
+  it('TB: single node placed at start position', () => {
+    const nodes = [makeNode('a', 0, 0)];
+    const result = applyGridLayout(nodes, 'TB', 50, 100);
+    expect(result[0].x).toBe(50);
+    expect(result[0].y).toBe(100);
+  });
+
+  it('TB: places nodes in rows (same y for same row, different x per column)', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 0, 0)];
+    // colCount = ceil(sqrt(2)) = 2; TB: col=i%2, row=i/2
+    const result = applyGridLayout(nodes, 'TB', 0, 0);
+    // i=0: col=0,row=0 → (0, 0)
+    // i=1: col=1,row=0 → (STEP_W, 0)
+    expect(result[0]).toMatchObject({ x: 0, y: 0 });
+    expect(result[1]).toMatchObject({ x: STEP_W, y: 0 });
+  });
+
+  it('LR: places nodes in columns (same x for same col, different y per row)', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 0, 0)];
+    // colCount=2; LR: row=i%2, col=i/2
+    const result = applyGridLayout(nodes, 'LR', 0, 0);
+    // i=0: col=0,row=0 → (0, 0)
+    // i=1: col=0,row=1 → (0, STEP_H)
+    expect(result[0]).toMatchObject({ x: 0, y: 0 });
+    expect(result[1]).toMatchObject({ x: 0, y: STEP_H });
+  });
+
+  it('preserves non-position properties (label, shape, color, pinned)', () => {
+    const node = { ...makeNode('a', 10, 20), pinned: true };
+    const result = applyGridLayout([node], 'TB', 5, 5);
+    expect(result[0].id).toBe('a');
+    expect(result[0].pinned).toBe(true);
+    expect(result[0].x).toBe(5);
+    expect(result[0].y).toBe(5);
+  });
+
+  it('does not mutate input nodes', () => {
+    const nodes = [makeNode('a', 10, 20)];
+    applyGridLayout(nodes, 'TB', 0, 0);
+    expect(nodes[0].x).toBe(10);
+    expect(nodes[0].y).toBe(20);
+  });
+
+  it('4 nodes TB: produces 2×2 grid layout', () => {
+    const nodes = [makeNode('a', 0, 0), makeNode('b', 0, 0), makeNode('c', 0, 0), makeNode('d', 0, 0)];
+    // colCount = ceil(sqrt(4)) = 2
+    const result = applyGridLayout(nodes, 'TB', 0, 0);
+    expect(result[0]).toMatchObject({ x: 0, y: 0 });          // col 0, row 0
+    expect(result[1]).toMatchObject({ x: STEP_W, y: 0 });     // col 1, row 0
+    expect(result[2]).toMatchObject({ x: 0, y: STEP_H });     // col 0, row 1
+    expect(result[3]).toMatchObject({ x: STEP_W, y: STEP_H }); // col 1, row 1
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sort_nodes — nodes get repositioned in grid after sort
+// ---------------------------------------------------------------------------
+
+describe('applyOps - sort_nodes repositioning', () => {
+  it('nodes receive new positions matching grid layout after TB sort', () => {
+    const doc = makeBaseDoc();
+    // n1 at (100,100), n2 at (300,100)
+    // TB sort order: n1 (x=100) then n2 (x=300) — same y, x tiebreaker
+    const STEP_W = DEFAULT_NODE_WIDTH + 40;
+    const result = applyOps(doc, [{ op: 'sort_nodes', direction: 'TB' }], mockId);
+    expect(result.success).toBe(true);
+    const after = result.document!;
+    // n1 at col=0,row=0 → (100, 100)  n2 at col=1,row=0 → (100+STEP_W, 100)
+    expect(after.nodes.find((n) => n.id === 'n1')!.x).toBe(100);
+    expect(after.nodes.find((n) => n.id === 'n1')!.y).toBe(100);
+    expect(after.nodes.find((n) => n.id === 'n2')!.x).toBe(100 + STEP_W);
+    expect(after.nodes.find((n) => n.id === 'n2')!.y).toBe(100);
+  });
+
+  it('grouped nodes keep their positions when top-level is sorted', () => {
+    const doc = makeDocWithGroups();
+    const g1NodesBefore = doc.nodes.filter((n) => n.group === 'g1').map((n) => ({ id: n.id, x: n.x, y: n.y }));
+    const result = applyOps(doc, [{ op: 'sort_nodes', direction: 'LR' }], mockId);
+    expect(result.success).toBe(true);
+    for (const before of g1NodesBefore) {
+      const after = result.document!.nodes.find((n) => n.id === before.id)!;
+      expect(after.x).toBe(before.x);
+      expect(after.y).toBe(before.y);
+    }
+  });
+
+  it('group-scoped sort repositions nodes inside group to grid positions', () => {
+    const doc = makeDocWithGroups();
+    // g1 nodes: g1-node-b (200,200) and g1-node-a (100,200)
+    // LR sort: g1-node-a (x=100) first, g1-node-b (x=200) second
+    const result = applyOps(doc, [{ op: 'sort_nodes', direction: 'LR', groupId: 'g1' }], mockId);
+    expect(result.success).toBe(true);
+    const a = result.document!.nodes.find((n) => n.id === 'g1-node-a')!;
+    const b = result.document!.nodes.find((n) => n.id === 'g1-node-b')!;
+    // a should come before b (in grid position)
+    // Both nodes at same y (200), so with 2 nodes and colCount=2 in LR layout:
+    // a at (100, 200), b at (100, 200 + STEP_H)
+    expect(a.x).toBe(100);
+    expect(a.y).toBe(200);
+    const STEP_H = DEFAULT_NODE_HEIGHT + 40;
+    expect(b.x).toBe(100);
+    expect(b.y).toBe(200 + STEP_H);
   });
 });

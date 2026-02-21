@@ -176,9 +176,11 @@ export class DiagramService {
   /**
    * Moves multiple nodes to explicit positions in a single write.
    * Used for batch drag of a multi-node selection.
+   * When a moved node belongs to a group, the group's stored x/y is cleared so
+   * that the group origin is always re-derived from its children on next render.
    */
   async moveNodes(
-    moves: Array<{ id: string; position: { x: number; y: number } }>,
+    moves: { id: string; position: { x: number; y: number } }[],
     doc?: vscode.TextDocument,
   ): Promise<void> {
     const target = doc ?? this.activeDocument;
@@ -188,12 +190,24 @@ export class DiagramService {
     if (!current) return;
 
     const modified = structuredClone(current);
+    const affectedGroupIds = new Set<string>();
+
     for (const { id, position } of moves) {
       const node = modified.nodes.find((n) => n.id === id);
       if (!node) continue;
       node.x = position.x;
       node.y = position.y;
       node.pinned = true;
+      if (node.group) affectedGroupIds.add(node.group);
+    }
+
+    // Clear stored group origin so group visuals always re-derive from children.
+    for (const groupId of affectedGroupIds) {
+      const group = modified.groups?.find((g) => g.id === groupId);
+      if (group) {
+        delete group.x;
+        delete group.y;
+      }
     }
 
     this.stampModified(modified);
@@ -204,6 +218,8 @@ export class DiagramService {
    * Moves a node to an explicit position, bypassing the pinned check.
    * This is used for user-initiated drags (where even a pinned node can be repositioned).
    * Sets `pinned = true` so the auto-layout won't displace it afterwards.
+   * When the node belongs to a group, the group's stored x/y is cleared so
+   * that the group origin is always re-derived from its children on next render.
    */
   async moveNode(
     id: string,
@@ -223,6 +239,15 @@ export class DiagramService {
     node.x = position.x;
     node.y = position.y;
     node.pinned = true;
+
+    // Clear stored group origin so group visuals always re-derive from children.
+    if (node.group) {
+      const group = modified.groups?.find((g) => g.id === node.group);
+      if (group) {
+        delete group.x;
+        delete group.y;
+      }
+    }
 
     this.stampModified(modified);
     await writeDocumentToFile(target, modified);

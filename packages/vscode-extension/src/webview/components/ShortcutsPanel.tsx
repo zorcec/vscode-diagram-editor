@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 
-type ShortcutsPanelProps = {
+interface ShortcutsPanelProps {
   onClose: () => void;
-};
+}
 
 const SHORTCUTS = [
   { keys: 'N', description: 'Add a new node' },

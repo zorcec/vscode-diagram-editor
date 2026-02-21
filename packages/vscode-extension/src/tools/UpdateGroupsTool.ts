@@ -3,11 +3,11 @@ import type { DiagramService } from '../DiagramService';
 import type { NodeColor } from '../types/DiagramDocument';
 
 interface UpdateGroupsInput {
-  updates: Array<{
+  updates: {
     id: string;
     label?: string;
     color?: string;
-  }>;
+  }[];
 }
 
 export class UpdateGroupsTool implements vscode.LanguageModelTool<UpdateGroupsInput> {

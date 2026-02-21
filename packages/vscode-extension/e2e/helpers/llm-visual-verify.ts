@@ -72,7 +72,7 @@ export async function verifyScreenshotWithLLM(
   }
 
   const result = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: { message?: { content?: string } }[];
   };
   const answer = result.choices?.[0]?.message?.content?.trim() ?? '';
   const passed = answer.toUpperCase().startsWith('YES');
@@ -120,7 +120,7 @@ export async function verifyDiagramStructureWithLLM(
   }
 
   const result = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: { message?: { content?: string } }[];
   };
   const answer = result.choices?.[0]?.message?.content?.trim() ?? '';
   const passed = answer.toUpperCase().startsWith('YES');

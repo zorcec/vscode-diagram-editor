@@ -13,18 +13,18 @@ import { VSCodePage } from './vscode-desktop-fixtures';
 /**
  * Worker-scoped fixtures (shared across tests in same worker)
  */
-type VSCodeWorkerFixtures = {
+interface VSCodeWorkerFixtures {
 	vscodeServer: VSCodeDesktopServer;
 	vscodeBrowser: Browser;
 	vscPage: VSCodePage;
-};
+}
 
 /**
  * Test-scoped fixtures
  */
-type VSCodeTestFixtures = {
+interface VSCodeTestFixtures {
 	testStartTime: number;
-};
+}
 
 /**
  * Extended test with suite-level VS Code fixtures

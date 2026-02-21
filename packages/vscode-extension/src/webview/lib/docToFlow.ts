@@ -10,7 +10,7 @@ import {
   type NodeColor,
 } from '../../types/DiagramDocument';
 
-export type DiagramNodeData = {
+export interface DiagramNodeData {
   label: string;
   shape: DocNode['shape'];
   color: DocNode['color'];
@@ -18,18 +18,18 @@ export type DiagramNodeData = {
   notes?: string;
   width: number;
   height: number;
-};
+}
 
-export type DiagramEdgeData = {
+export interface DiagramEdgeData {
   style: 'solid' | 'dashed' | 'dotted';
   arrow: 'normal' | 'arrow' | 'open' | 'none';
-};
+}
 
-export type DiagramGroupNodeData = {
+export interface DiagramGroupNodeData {
   label: string;
   color?: NodeColor;
   collapsed?: boolean;
-};
+}
 
 /**
  * Computes the bounding box of all child nodes belonging to a group.
@@ -60,18 +60,22 @@ function computeGroupBounds(
 }
 
 /**
- * Resolves the absolute top-left position of a group, falling back to the
- * computed bounding box if the group has no stored position.
+ * Resolves the absolute top-left position of a group.
+ *
+ * Always derives from the child nodes' bounding box when the group has children.
+ * This guarantees the group rectangle tracks child positions correctly even when
+ * children are moved independently after the group was dragged.
+ * Falls back to the stored x/y only for empty groups (no children yet).
  */
 export function resolveGroupOrigin(
   group: DiagramGroup,
   nodes: DocNode[],
 ): { x: number; y: number } {
   const bounds = computeGroupBounds(nodes, group.id);
-  return {
-    x: group.x ?? bounds?.x ?? 0,
-    y: group.y ?? bounds?.y ?? 0,
-  };
+  // Prefer bounds-derived origin so the visual group always wraps its children.
+  if (bounds) return { x: bounds.x, y: bounds.y };
+  // Empty group: fall back to stored position.
+  return { x: group.x ?? 0, y: group.y ?? 0 };
 }
 
 export function docToFlowGroupNodes(doc: DiagramDocument): Node<DiagramGroupNodeData>[] {

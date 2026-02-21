@@ -2,7 +2,7 @@ import { Panel, useReactFlow } from '@xyflow/react';
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import type { LayoutDirection } from '../../types/DiagramDocument';
 
-type ToolbarProps = {
+interface ToolbarProps {
   onAddNode: () => void;
   onAddNote: () => void;
   onAddGroup: () => void;
@@ -17,7 +17,7 @@ type ToolbarProps = {
   layoutDirection: LayoutDirection;
   onSetLayoutDirection: (dir: LayoutDirection) => void;
   selectedGroupId: string | null;
-};
+}
 
 const DIRECTION_LABEL: Record<LayoutDirection, string> = {
   TB: '↕ TB',
@@ -33,19 +33,12 @@ const DIRECTION_SHORT: Record<LayoutDirection, string> = {
   RL: 'RL',
 };
 
-const DIRECTION_CYCLE: Record<LayoutDirection, LayoutDirection> = {
-  TB: 'LR',
-  LR: 'BT',
-  BT: 'RL',
-  RL: 'TB',
-};
-
 const ALL_DIRECTIONS: LayoutDirection[] = ['TB', 'LR', 'BT', 'RL'];
 
-type ToolSectionProps = {
+interface ToolSectionProps {
   label: string;
   children: ReactNode;
-};
+}
 
 function ToolSection({ label, children }: ToolSectionProps) {
   return (
@@ -94,8 +87,6 @@ export function Toolbar({
   const sortDropdown = useDropdown();
   const exportDropdown = useDropdown();
 
-  const toggleDirection = () => onSetLayoutDirection(DIRECTION_CYCLE[layoutDirection]);
-
   const sortLabel = selectedGroupId ? 'Sort In' : 'Sort';
   const sortTitle = selectedGroupId
     ? 'Sort nodes inside the selected group by reading order'
@@ -137,17 +128,7 @@ export function Toolbar({
 
       {/* Arrange */}
       <ToolSection label="Arrange">
-        <button
-          onClick={toggleDirection}
-          title={`Layout direction: ${layoutDirection} — click to cycle TB → LR → BT → RL`}
-          data-testid="btn-layout-direction"
-          className="toolbox-btn toolbox-btn--direction"
-        >
-          <span className="toolbox-btn-icon">{DIRECTION_LABEL[layoutDirection]}</span>
-          <span className="toolbox-btn-label">Direction</span>
-        </button>
-
-        {/* Sort split-button: main sort + direction dropdown */}
+        {/* Sort split-button: main sort + direction dropdown (only way to change direction) */}
         <div className="toolbox-split-btn" ref={sortDropdown.ref}>
           <button
             onClick={() => onSortNodes(layoutDirection)}
@@ -174,6 +155,7 @@ export function Toolbar({
                   key={dir}
                   className={`toolbox-dropdown-item ${dir === layoutDirection ? 'toolbox-dropdown-item--active' : ''}`}
                   onClick={() => {
+                    onSetLayoutDirection(dir);
                     onSortNodes(dir);
                     sortDropdown.setOpen(false);
                   }}

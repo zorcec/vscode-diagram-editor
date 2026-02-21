@@ -261,4 +261,86 @@ describe('DiagramService', () => {
       expect(doc.viewport).toEqual({ x: 0, y: 0, zoom: 1 });
     });
   });
+
+  describe('moveNode – clears group x/y for grouped child', () => {
+    it('clears stored group.x and group.y when a grouped node is moved', async () => {
+      const doc = makeValidDoc();
+      doc.nodes = [
+        { id: 'n1', label: 'A', x: 200, y: 200, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, group: 'g1' },
+      ];
+      doc.groups = [{ id: 'g1', label: 'Group', x: 100, y: 100 }];
+
+      let written: any;
+      vi.mocked(vscode.workspace.applyEdit).mockImplementation(async (edit: vscode.WorkspaceEdit) => {
+        const text = (edit as any)._edits?.[0]?.newText ?? '';
+        if (text) written = JSON.parse(text);
+        return true;
+      });
+
+      const textDoc = makeMockTextDocument(JSON.stringify(doc));
+      await service.moveNode('n1', { x: 350, y: 350 }, textDoc);
+
+      expect(vscode.workspace.applyEdit).toHaveBeenCalledTimes(1);
+      if (written) {
+        expect(written.groups[0].x).toBeUndefined();
+        expect(written.groups[0].y).toBeUndefined();
+      }
+    });
+
+    it('does not touch groups when moving an ungrouped node', async () => {
+      const doc = makeValidDoc();
+      doc.nodes = [
+        { id: 'n1', label: 'A', x: 100, y: 100, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+      ];
+      doc.groups = [{ id: 'g1', label: 'Group', x: 50, y: 50 }];
+
+      let written: any;
+      vi.mocked(vscode.workspace.applyEdit).mockImplementation(async (edit: vscode.WorkspaceEdit) => {
+        const text = (edit as any)._edits?.[0]?.newText ?? '';
+        if (text) written = JSON.parse(text);
+        return true;
+      });
+
+      const textDoc = makeMockTextDocument(JSON.stringify(doc));
+      await service.moveNode('n1', { x: 200, y: 200 }, textDoc);
+
+      expect(vscode.workspace.applyEdit).toHaveBeenCalledTimes(1);
+      // Group position should remain untouched
+      if (written) {
+        expect(written.groups[0].x).toBe(50);
+        expect(written.groups[0].y).toBe(50);
+      }
+    });
+  });
+
+  describe('moveNodes – clears group x/y for affected groups', () => {
+    it('clears stored group.x and group.y for each group of a moved node', async () => {
+      const doc = makeValidDoc();
+      doc.nodes = [
+        { id: 'n1', label: 'A', x: 200, y: 200, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, group: 'g1' },
+        { id: 'n2', label: 'B', x: 300, y: 300, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false },
+      ];
+      doc.groups = [{ id: 'g1', label: 'Group', x: 100, y: 100 }];
+
+      let written: any;
+      vi.mocked(vscode.workspace.applyEdit).mockImplementation(async (edit: vscode.WorkspaceEdit) => {
+        const text = (edit as any)._edits?.[0]?.newText ?? '';
+        if (text) written = JSON.parse(text);
+        return true;
+      });
+
+      const textDoc = makeMockTextDocument(JSON.stringify(doc));
+      await service.moveNodes([
+        { id: 'n1', position: { x: 400, y: 400 } },
+        { id: 'n2', position: { x: 500, y: 500 } },
+      ], textDoc);
+
+      expect(vscode.workspace.applyEdit).toHaveBeenCalledTimes(1);
+      if (written) {
+        // g1's x/y should be cleared because n1 (in g1) was moved
+        expect(written.groups[0].x).toBeUndefined();
+        expect(written.groups[0].y).toBeUndefined();
+      }
+    });
+  });
 });

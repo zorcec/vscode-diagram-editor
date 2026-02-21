@@ -220,7 +220,7 @@ function validateEdges(
 function validateGroups(
   groups: unknown,
   errors: string[],
-  nodeIds: Set<string>,
+  _nodeIds: Set<string>,
 ): Set<string> {
   const groupIds = new Set<string>();
   if (groups === undefined || groups === null) {

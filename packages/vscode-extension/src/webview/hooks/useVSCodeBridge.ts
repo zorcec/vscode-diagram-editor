@@ -7,14 +7,14 @@ declare function acquireVsCodeApi(): {
   setState(state: unknown): void;
 };
 
-type BridgeOptions = {
+interface BridgeOptions {
   onDocumentUpdated: (doc: DiagramDocument) => void;
   onSvgResult?: (svgContent: string) => void;
-};
+}
 
-export type VSCodeBridge = {
+export interface VSCodeBridge {
   postMessage: (msg: unknown) => void;
-};
+}
 
 let vscodeApi: ReturnType<typeof acquireVsCodeApi> | null = null;
 

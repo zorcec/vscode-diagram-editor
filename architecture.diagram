@@ -3,7 +3,7 @@
     "version": "1.0",
     "title": "DiagramFlow — Project Architecture",
     "created": "2026-02-21T00:00:00Z",
-    "modified": "2026-02-21T21:25:07.515Z"
+    "modified": "2026-02-21T22:23:55.937Z"
   },
   "nodes": [
     {
@@ -184,6 +184,18 @@
       "group": "g_lib"
     },
     {
+      "id": "editor_provider",
+      "label": "DiagramEditorProvider",
+      "shape": "rectangle",
+      "color": "default",
+      "x": 140,
+      "y": 280,
+      "width": 220,
+      "height": 48,
+      "pinned": true,
+      "group": "g_host"
+    },
+    {
       "id": "extension",
       "label": "Extension Entry (extension.ts)",
       "shape": "rectangle",
@@ -196,13 +208,13 @@
       "group": "g_host"
     },
     {
-      "id": "editor_provider",
-      "label": "DiagramEditorProvider",
+      "id": "diagram_service",
+      "label": "DiagramService",
       "shape": "rectangle",
       "color": "default",
-      "x": 140,
-      "y": 280,
-      "width": 220,
+      "x": 380,
+      "y": 420,
+      "width": 200,
       "height": 48,
       "pinned": true,
       "group": "g_host"
@@ -219,18 +231,6 @@
       "pinned": true,
       "group": "g_host",
       "notes": "Includes 3 group tools: addGroups, removeGroups, updateGroups (added in groups feature)"
-    },
-    {
-      "id": "diagram_service",
-      "label": "DiagramService",
-      "shape": "rectangle",
-      "color": "default",
-      "x": 380,
-      "y": 420,
-      "width": 200,
-      "height": 48,
-      "pinned": true,
-      "group": "g_host"
     }
   ],
   "edges": [
@@ -444,7 +444,7 @@
   },
   "agentContext": {
     "format": "diagramflow-v1",
-    "generatedAt": "2026-02-21T21:25:07.515Z",
+    "generatedAt": "2026-02-21T22:23:55.937Z",
     "summary": "\"DiagramFlow — Project Architecture\" contains 19 nodes (\"Message Protocol\", \"User / Developer\", \".diagram JSON file\", \"GitHub Copilot\", \"React Flow Webview\" and 14 more) connected by 20 edges. Grouped into: \"Webview (React)\" (5 nodes), \"Extension Host (VS Code)\" (4 nodes), \"Core Libraries (Pure Functions)\" (6 nodes).",
     "nodeIndex": [
       {
@@ -520,24 +520,24 @@
         "group": "g_lib"
       },
       {
+        "id": "editor_provider",
+        "label": "DiagramEditorProvider",
+        "group": "g_host"
+      },
+      {
         "id": "extension",
         "label": "Extension Entry (extension.ts)",
         "group": "g_host"
       },
       {
-        "id": "editor_provider",
-        "label": "DiagramEditorProvider",
+        "id": "diagram_service",
+        "label": "DiagramService",
         "group": "g_host"
       },
       {
         "id": "lm_tools",
         "label": "LM Tools (10 tools)",
         "notes": "Includes 3 group tools: addGroups, removeGroups, updateGroups (added in groups feature)",
-        "group": "g_host"
-      },
-      {
-        "id": "diagram_service",
-        "label": "DiagramService",
         "group": "g_host"
       }
     ],
@@ -659,10 +659,10 @@
       {
         "group": "Extension Host (VS Code)",
         "members": [
-          "Extension Entry (extension.ts)",
           "DiagramEditorProvider",
-          "LM Tools (10 tools)",
-          "DiagramService"
+          "Extension Entry (extension.ts)",
+          "DiagramService",
+          "LM Tools (10 tools)"
         ]
       },
       {

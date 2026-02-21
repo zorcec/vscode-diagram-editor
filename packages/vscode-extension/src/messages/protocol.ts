@@ -9,7 +9,7 @@ export type WebviewMessage =
     }
   | {
       type: 'NODES_DRAGGED';
-      moves: Array<{ id: string; position: { x: number; y: number } }>;
+      moves: { id: string; position: { x: number; y: number } }[];
     }
   | {
       type: 'GROUP_DRAGGED';
@@ -27,7 +27,7 @@ export type WebviewMessage =
     }
   | {
       type: 'ADD_NODES';
-      nodes: Array<{ label: string; shape?: NodeShape; color?: NodeColor; notes?: string; x?: number; y?: number }>;
+      nodes: { label: string; shape?: NodeShape; color?: NodeColor; notes?: string; x?: number; y?: number }[];
     }
   | { type: 'DELETE_NODES'; nodeIds: string[] }
   | {

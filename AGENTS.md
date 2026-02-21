@@ -1,5 +1,71 @@
 For fetching the websites use the webcrawl-fetch tool.
 
+## Running Tests
+
+### Unit tests (fast, no display needed)
+```sh
+# From the monorepo root
+npm test              # run once
+npm run test:watch    # watch mode
+npm run test:coverage # with coverage
+```
+
+### E2E tests (requires VS Code Desktop + a display server)
+E2E tests launch a real VS Code Desktop instance via Playwright and need either a physical display or a virtual framebuffer (Xvfb) on Linux/CI.
+
+```sh
+# Linux / CI — use the Xvfb wrapper (recommended on headless servers)
+npm run e2e:xvfb
+
+# macOS / Windows or a machine with a real display
+npm run e2e
+
+# Headed mode — shows the browser window (useful for debugging)
+npm run e2e:headed
+```
+
+**CI / headless environment notes:**
+- `npm run e2e` calls `npx playwright test` directly; set `DISPLAY` before running if not using `e2e:xvfb`.
+- `npm run e2e:xvfb` wraps the command with `xvfb-run --auto-servernum` and a 1920×1080 virtual screen — the safest choice on any headless Linux machine.
+- Install Xvfb if missing: `sudo apt-get install -y xvfb`.
+- Playwright config lives in `playwright.config.ts` at the repo root; `headless: true` is already set for all projects.
+
+## Linting
+
+The project uses **ESLint 10** with `typescript-eslint` strict + stylistic configuration (the community‑standard TypeScript linting setup, equivalent to `eslint-config-airbnb` for JavaScript projects).
+
+### Running the linter
+
+```sh
+# From the monorepo root
+npm run lint        # check only — reports all errors and warnings
+npm run lint:fix    # auto-fix fixable issues (formatting, simple style)
+```
+
+### Agent requirement
+
+**Agents MUST ensure `npm run lint` reports zero errors before submitting any changes.**
+
+- Run `npm run lint:fix` after every batch of edits to auto-fix formatting issues.
+- Run `npm run lint` to confirm 0 errors remain.
+- Warnings (e.g. `@typescript-eslint/no-explicit-any`) are tolerated but should be minimised.
+
+### Key rules
+
+| Rule | Setting | Reason |
+|---|---|---|
+| `@typescript-eslint/no-explicit-any` | warn | VS Code API types require `any` in some places |
+| `@typescript-eslint/no-non-null-assertion` | warn | VS Code API can legitimately need `!` |
+| `@typescript-eslint/no-unused-vars` | error | `_`-prefixed params/vars are ignored |
+| `no-empty-pattern` | off (e2e only) | Playwright requires `{}` fixture destructuring |
+| `class-methods-use-this` | off | VS Code provider/tool class methods often don't use `this` |
+
+### Config location
+
+`eslint.config.mjs` at the repository root.
+
+---
+
 ## Architecture Diagram Reference
 
 - The project architecture is documented in [architecture.diagram](architecture.diagram).

@@ -16,7 +16,7 @@ test.describe('Custom Editor Activation', () => {
     await vscPage.page.waitForTimeout(2000);
 
     const webview = vscPage.page.locator('iframe.webview, .webview-element');
-    const hasWebview = await webview.count().catch(() => 0);
+    await webview.count().catch(() => 0);
 
     // The custom editor should create a webview iframe
     // If the extension is loaded and file opens, a webview or custom editor pane should exist

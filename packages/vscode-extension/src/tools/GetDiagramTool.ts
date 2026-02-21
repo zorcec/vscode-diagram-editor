@@ -1,25 +1,48 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 
-export class GetDiagramTool implements vscode.LanguageModelTool<Record<string, never>> {
+interface GetDiagramInput {
+  /** Workspace-absolute path to the .diagram file to read. */
+  filePath: string;
+}
+
+/**
+ * Returns the raw diagram structure with node/edge IDs. Use this when you
+ * need IDs to call update/add/remove tools. `filePath` is required so the
+ * agent always specifies which file to operate on.
+ */
+export class GetDiagramTool implements vscode.LanguageModelTool<GetDiagramInput> {
   constructor(private readonly diagramService: DiagramService) {}
 
   async prepareInvocation(
-    _options: vscode.LanguageModelToolInvocationPrepareOptions<Record<string, never>>,
+    options: vscode.LanguageModelToolInvocationPrepareOptions<GetDiagramInput>,
     _token: vscode.CancellationToken,
   ) {
-    return { invocationMessage: 'Reading current diagram...' };
+    const fileName = options.input.filePath.split('/').pop() ?? options.input.filePath;
+    return { invocationMessage: `Reading diagram structure from ${fileName}...` };
   }
 
   async invoke(
-    _options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
+    options: vscode.LanguageModelToolInvocationOptions<GetDiagramInput>,
     _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
-    const doc = this.diagramService.parseDocument();
+    const uri = vscode.Uri.file(options.input.filePath);
+    let textDoc: vscode.TextDocument;
+    try {
+      textDoc = await vscode.workspace.openTextDocument(uri);
+    } catch {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          `Cannot open file: ${options.input.filePath}. Make sure the path exists and is a .diagram file.`,
+        ),
+      ]);
+    }
+
+    const doc = this.diagramService.parseDocument(textDoc);
     if (!doc) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          'No .diagram file is currently open. Open a .diagram file first.',
+          `Cannot parse diagram at: ${options.input.filePath}`,
         ),
       ]);
     }

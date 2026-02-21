@@ -11,17 +11,25 @@
     "test": "vitest run --exclude '**/e2e/**'",
     "test:watch": "vitest --exclude '**/e2e/**'",
     "test:coverage": "vitest run --exclude '**/e2e/**' --coverage",
-    "e2e": "npm run build && xvfb-run -a npx playwright test",
+    "lint": "eslint 'packages/**/*.{ts,tsx}'",
+    "lint:fix": "eslint 'packages/**/*.{ts,tsx}' --fix",
+    "e2e": "npm run build && npx playwright test",
+    "e2e:xvfb": "npm run build && xvfb-run --auto-servernum --server-args='-screen 0 1920x1080x24' npx playwright test",
     "e2e:headed": "npm run build && npx playwright test --headed"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.56.1",
     "@types/node": "^24.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.56.0",
+    "@typescript-eslint/parser": "^8.56.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "electron": "^39.1.1",
+    "eslint": "^10.0.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
+    "typescript-eslint": "^8.56.0",
     "vitest": "^3.2.4"
   }
 }

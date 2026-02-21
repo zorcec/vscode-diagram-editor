@@ -74,7 +74,7 @@ export function generateAgentContext(doc: DiagramDocument): AgentContext {
 
 function buildGroupIndex(
   doc: DiagramDocument,
-  nodeMap: Map<string, (typeof doc.nodes)[number]>,
+  _nodeMap: Map<string, (typeof doc.nodes)[number]>,
 ): AgentContext['groupIndex'] {
   if (!doc.groups || doc.groups.length === 0) return [];
 

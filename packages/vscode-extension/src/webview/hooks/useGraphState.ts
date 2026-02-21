@@ -14,7 +14,6 @@ import {
   docToFlowGroupNodes,
   type DiagramNodeData,
   type DiagramEdgeData,
-  type DiagramGroupNodeData,
 } from '../lib/docToFlow';
 import { buildExportSvg, rasterizeSvgToPng } from '../lib/exportSvg';
 import { exportToMermaid } from '../../lib/exporters';
@@ -29,14 +28,14 @@ import type {
 } from '../../types/DiagramDocument';
 import type { VSCodeBridge } from './useVSCodeBridge';
 
-export type ClipboardNode = {
+export interface ClipboardNode {
   label: string;
   shape: NodeShape;
   color: NodeColor;
   notes?: string;
-};
+}
 
-export type GraphState = {
+export interface GraphState {
   nodes: Node<DiagramNodeData>[];
   allNodes: Node[];
   edges: Edge<DiagramEdgeData>[];
@@ -92,7 +91,7 @@ export type GraphState = {
   onExportPng: () => void;
   onExportMermaid: () => void;
   onOpenSvg: () => void;
-};
+}
 
 export function useGraphState(
   doc: DiagramDocument | null,
@@ -202,7 +201,7 @@ export function useGraphState(
       }
 
       // Multi-node drag: batch all moved regular nodes in a single message.
-      const moves: Array<{ id: string; position: { x: number; y: number } }> = [];
+      const moves: { id: string; position: { x: number; y: number } }[] = [];
       for (const n of nodes) {
         if (n.type === 'diagramGroup') {
           // Persist each dragged group individually.

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('vscode', () => import('../__mocks__/vscode'));
 
@@ -16,7 +16,7 @@ import type { DiagramDocument } from '../types/DiagramDocument';
 import * as vscode from 'vscode';
 
 interface MockToolResult {
-  parts: Array<{ value: string }>;
+  parts: { value: string }[];
 }
 
 function resultText(result: unknown): string {
@@ -90,35 +90,61 @@ const mockToken = {
   onCancellationRequested: vi.fn(),
 } as unknown as vscode.CancellationToken;
 
+const TEST_FILE_PATH = '/workspace/test.diagram';
+
 describe('GetDiagramTool', () => {
-  it('prepareInvocation returns a message', async () => {
+  it('prepareInvocation message includes filename', async () => {
     const svc = makeMockDiagramService();
     const tool = new GetDiagramTool(svc);
 
     const result = await tool.prepareInvocation(
-      { input: {} } as any,
+      { input: { filePath: TEST_FILE_PATH } } as any,
       mockToken,
     );
 
     expect(result?.invocationMessage).toContain('Reading');
+    expect(result?.invocationMessage).toContain('test.diagram');
   });
 
-  it('returns error when no document is open', async () => {
+  it('returns error when diagram file cannot be parsed', async () => {
     const svc = makeMockDiagramService({
       parseDocument: vi.fn().mockReturnValue(null),
     });
     const tool = new GetDiagramTool(svc);
 
-    const result = await tool.invoke({ input: {} } as any, mockToken);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH } } as any,
+      mockToken,
+    );
 
-    expect(resultText(result)).toContain('No .diagram file');
+    expect(resultText(result)).toContain('Cannot parse diagram at');
+    expect(resultText(result)).toContain(TEST_FILE_PATH);
+  });
+
+  it('returns error when file cannot be opened', async () => {
+    vi.mocked(vscode.workspace.openTextDocument).mockRejectedValueOnce(
+      new Error('File not found'),
+    );
+    const svc = makeMockDiagramService();
+    const tool = new GetDiagramTool(svc);
+
+    const result = await tool.invoke(
+      { input: { filePath: '/nonexistent/missing.diagram' } } as any,
+      mockToken,
+    );
+
+    expect(resultText(result)).toContain('Cannot open file');
+    expect(resultText(result)).toContain('/nonexistent/missing.diagram');
   });
 
   it('returns compact diagram representation', async () => {
     const svc = makeMockDiagramService();
     const tool = new GetDiagramTool(svc);
 
-    const result = await tool.invoke({ input: {} } as any, mockToken);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH } } as any,
+      mockToken,
+    );
     const parsed = JSON.parse(resultText(result));
 
     expect(parsed.title).toBe('Test');
@@ -131,7 +157,10 @@ describe('GetDiagramTool', () => {
     const svc = makeMockDiagramService();
     const tool = new GetDiagramTool(svc);
 
-    const result = await tool.invoke({ input: {} } as any, mockToken);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH } } as any,
+      mockToken,
+    );
     const parsed = JSON.parse(resultText(result));
 
     expect(parsed.nodes[0].shape).toBeUndefined();
@@ -150,7 +179,7 @@ describe('GetDiagramTool', () => {
     // Must not throw – returns an empty title instead of crashing
     let result: unknown;
     await expect(
-      (async () => { result = await tool.invoke({ input: {} } as any, mockToken); })()
+      (async () => { result = await tool.invoke({ input: { filePath: TEST_FILE_PATH } } as any, mockToken); })()
     ).resolves.not.toThrow();
 
     const parsed = JSON.parse(resultText(result));
@@ -525,31 +554,58 @@ describe('UpdateEdgesTool', () => {
 });
 
 describe('ReadDiagramTool', () => {
-  it('prepareInvocation returns a reading message', async () => {
+  it('prepareInvocation message includes filename', async () => {
     const svc = makeMockDiagramService();
     const tool = new ReadDiagramTool(svc);
 
-    const result = await tool.prepareInvocation({ input: {} } as any, mockToken);
+    const result = await tool.prepareInvocation(
+      { input: { filePath: TEST_FILE_PATH } } as any,
+      mockToken,
+    );
 
     expect(result?.invocationMessage).toContain('Reading');
+    expect(result?.invocationMessage).toContain('test.diagram');
   });
 
-  it('returns error message when no document is open', async () => {
+  it('returns error when diagram file cannot be parsed', async () => {
     const svc = makeMockDiagramService({
       parseDocument: vi.fn().mockReturnValue(null),
     });
     const tool = new ReadDiagramTool(svc);
 
-    const result = await tool.invoke({ input: {} } as any, mockToken);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH } } as any,
+      mockToken,
+    );
 
-    expect(resultText(result)).toContain('No .diagram file');
+    expect(resultText(result)).toContain('Cannot parse diagram at');
+    expect(resultText(result)).toContain(TEST_FILE_PATH);
+  });
+
+  it('returns error when file cannot be opened', async () => {
+    vi.mocked(vscode.workspace.openTextDocument).mockRejectedValueOnce(
+      new Error('File not found'),
+    );
+    const svc = makeMockDiagramService();
+    const tool = new ReadDiagramTool(svc);
+
+    const result = await tool.invoke(
+      { input: { filePath: '/nonexistent/missing.diagram' } } as any,
+      mockToken,
+    );
+
+    expect(resultText(result)).toContain('Cannot open file');
+    expect(resultText(result)).toContain('/nonexistent/missing.diagram');
   });
 
   it('returns readable text when document is open', async () => {
     const svc = makeMockDiagramService();
     const tool = new ReadDiagramTool(svc);
 
-    const result = await tool.invoke({ input: {} } as any, mockToken);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH } } as any,
+      mockToken,
+    );
     const text = resultText(result);
 
     expect(text).toContain('Node A');

@@ -3,14 +3,14 @@ import type { DiagramService } from '../DiagramService';
 import type { EdgeStyle, ArrowType } from '../types/DiagramDocument';
 
 interface AddEdgesInput {
-  edges: Array<{
+  edges: {
     source: string;
     target: string;
     label?: string;
     style?: string;
     arrow?: string;
     animated?: boolean;
-  }>;
+  }[];
 }
 
 export class AddEdgesTool implements vscode.LanguageModelTool<AddEdgesInput> {

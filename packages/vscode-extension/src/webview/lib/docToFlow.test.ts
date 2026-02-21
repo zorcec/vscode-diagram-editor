@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { docToFlowNodes, docToFlowEdges } from './docToFlow';
+import { docToFlowNodes, docToFlowEdges, docToFlowGroupNodes, resolveGroupOrigin } from './docToFlow';
 import type { DiagramDocument } from '../../types/DiagramDocument';
+import { GROUP_PADDING, GROUP_LABEL_HEIGHT } from '../../types/DiagramDocument';
 
 function makeDoc(
   overrides: Partial<DiagramDocument> = {},
@@ -366,5 +367,76 @@ describe('docToFlowNodes – NaN protection', () => {
     expect(Number.isNaN(node.height)).toBe(false);
     expect(Number.isNaN(node.data.width)).toBe(false);
     expect(Number.isNaN(node.data.height)).toBe(false);
+  });
+});
+// ---------------------------------------------------------------------------
+// Group rendering: resolveGroupOrigin and docToFlowGroupNodes
+// ---------------------------------------------------------------------------
+
+function makeGroupDoc(): DiagramDocument {
+  return {
+    meta: { title: 'T', created: '2025-01-01T00:00:00Z', modified: '2025-01-01T00:00:00Z' },
+    nodes: [
+      { id: 'n1', label: 'A', x: 200, y: 300, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, group: 'g1' },
+      { id: 'n2', label: 'B', x: 400, y: 300, width: 160, height: 48, shape: 'rectangle', color: 'default', pinned: false, group: 'g1' },
+    ],
+    edges: [],
+    groups: [{ id: 'g1', label: 'Group' }],
+  };
+}
+
+describe('resolveGroupOrigin', () => {
+  it('uses bounds-based origin from children when children exist', () => {
+    const doc = makeGroupDoc();
+    const group = doc.groups![0];
+    const origin = resolveGroupOrigin(group, doc.nodes);
+    expect(origin.x).toBe(200 - GROUP_PADDING);
+    expect(origin.y).toBe(300 - GROUP_PADDING - GROUP_LABEL_HEIGHT);
+  });
+
+  it('ignores stale group.x/y when children exist (bug fix)', () => {
+    const doc = makeGroupDoc();
+    const group = { ...doc.groups![0], x: 999, y: 999 };
+    const origin = resolveGroupOrigin(group, doc.nodes);
+    expect(origin.x).toBe(200 - GROUP_PADDING);
+    expect(origin.y).toBe(300 - GROUP_PADDING - GROUP_LABEL_HEIGHT);
+    expect(origin.x).not.toBe(999);
+    expect(origin.y).not.toBe(999);
+  });
+
+  it('falls back to stored x/y when group has no children', () => {
+    const group = { id: 'g-empty', label: 'Empty', x: 50, y: 80 };
+    const origin = resolveGroupOrigin(group, []);
+    expect(origin.x).toBe(50);
+    expect(origin.y).toBe(80);
+  });
+
+  it('falls back to origin (0,0) when group has no children and no stored position', () => {
+    const group = { id: 'g-empty', label: 'Empty' };
+    const origin = resolveGroupOrigin(group, []);
+    expect(origin.x).toBe(0);
+    expect(origin.y).toBe(0);
+  });
+});
+
+describe('docToFlowGroupNodes – group renders at bounds-derived position', () => {
+  it('group position matches bounding box of children, ignoring stale stored x/y', () => {
+    const doc = makeGroupDoc();
+    doc.groups![0] = { id: 'g1', label: 'Group', x: 5000, y: 5000 };
+    const groupNodes = docToFlowGroupNodes(doc);
+    expect(groupNodes).toHaveLength(1);
+    expect(groupNodes[0].position.x).toBe(200 - GROUP_PADDING);
+    expect(groupNodes[0].position.y).toBe(300 - GROUP_PADDING - GROUP_LABEL_HEIGHT);
+  });
+
+  it('child nodes are positioned relative to bounds-derived group origin', () => {
+    const doc = makeGroupDoc();
+    doc.groups![0] = { id: 'g1', label: 'Group', x: 5000, y: 5000 };
+    const childNodes = docToFlowNodes(doc);
+    const expectedOriginX = 200 - GROUP_PADDING;
+    const expectedOriginY = 300 - GROUP_PADDING - GROUP_LABEL_HEIGHT;
+    const n1 = childNodes.find((n) => n.id === 'n1')!;
+    expect(n1.position.x).toBe(200 - expectedOriginX);
+    expect(n1.position.y).toBe(300 - expectedOriginY);
   });
 });
