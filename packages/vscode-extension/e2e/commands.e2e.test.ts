@@ -13,7 +13,7 @@ import { test } from './fixtures/vscode-suite-fixtures';
 
 test.describe('Extension Commands', () => {
   test('auto layout command is available', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(1000);
 
     // Open command palette and search for the command

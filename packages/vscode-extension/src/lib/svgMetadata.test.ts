@@ -117,4 +117,41 @@ describe('extractDiagramFromSvg', () => {
     const result = extractDiagramFromSvg(svg);
     expect(typeof result).toBe('string');
   });
+
+  it('handles XML-escaped JSON with &quot; entities (legacy SVG format)', () => {
+    // Simulates SVGs produced by older versions of buildDocumentSvg that over-escaped " as &quot;
+    const rawJson = JSON.stringify(VALID_DOC);
+    const escapedJson = rawJson.replace(/"/g, '&quot;');
+    const svg = makeSvg(escapedJson);
+    const result = extractDiagramFromSvg(svg);
+    expect(result).not.toBeNull();
+    expect(JSON.parse(result!)).toEqual(VALID_DOC);
+  });
+
+  it('handles XML-escaped JSON with &amp; entities in label values', () => {
+    const docWithAmpersand = {
+      ...VALID_DOC,
+      nodes: [{ ...VALID_DOC.nodes[0], label: 'A&B' }],
+    };
+    // Embed with text-content escaping (& → &amp;)
+    const escapedJson = JSON.stringify(docWithAmpersand).replace(/&/g, '&amp;');
+    const svg = makeSvg(escapedJson);
+    const result = extractDiagramFromSvg(svg);
+    expect(result).not.toBeNull();
+    const parsed = JSON.parse(result!);
+    expect(parsed.nodes[0].label).toBe('A&B');
+  });
+
+  it('handles XML-escaped JSON with &lt; entities in label values', () => {
+    const docWithLt = {
+      ...VALID_DOC,
+      nodes: [{ ...VALID_DOC.nodes[0], label: 'a<b' }],
+    };
+    const escapedJson = JSON.stringify(docWithLt).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const svg = makeSvg(escapedJson);
+    const result = extractDiagramFromSvg(svg);
+    expect(result).not.toBeNull();
+    const parsed = JSON.parse(result!);
+    expect(parsed.nodes[0].label).toBe('a<b');
+  });
 });

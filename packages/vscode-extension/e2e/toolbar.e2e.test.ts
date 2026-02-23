@@ -32,10 +32,10 @@ test.describe('Toolbar & Toolbar-driven Commands', () => {
       }
     });
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(4000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     expect(reactFlowErrors).toHaveLength(0);
@@ -44,10 +44,10 @@ test.describe('Toolbar & Toolbar-driven Commands', () => {
   test('auto-layout command executes without crashing the editor', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // Execute the auto-layout command via the command palette
@@ -98,10 +98,10 @@ test.describe('Toolbar & Toolbar-driven Commands', () => {
   test('webview iframe is present after opening diagram (canvas rendered)', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(3000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // If the toolbar crashed due to useReactFlow error, the entire webview
@@ -126,10 +126,10 @@ test.describe('Toolbar & Toolbar-driven Commands', () => {
       }
     });
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(4000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     expect(extensionErrors).toHaveLength(0);

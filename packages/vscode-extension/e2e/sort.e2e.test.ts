@@ -19,10 +19,17 @@ import { test } from './fixtures/vscode-suite-fixtures';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const SORT_TEST_FILE = path.resolve(__dirname, 'test-project', 'sort-test.diagram');
+const SORT_TEST_FILE = path.resolve(__dirname, 'test-project', 'sort-test.diagram.svg');
+const SOURCE_RE = /<diagramflow:source[^>]*>([\s\S]*?)<\/diagramflow:source>/;
 
 function readDiagram(): any {
-  return JSON.parse(fs.readFileSync(SORT_TEST_FILE, 'utf-8'));
+  const content = fs.readFileSync(SORT_TEST_FILE, 'utf-8');
+  const match = content.match(SOURCE_RE);
+  if (!match?.[1]) throw new Error('No diagram metadata in sort-test.diagram.svg');
+  const json = match[1].trim()
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return JSON.parse(json);
 }
 
 /** Save current content and return a function that restores it. */
@@ -38,10 +45,10 @@ test.describe.serial('Sort Nodes', () => {
     const restore = backupAndRestore();
 
     try {
-      await vscPage.openFile('sort-test.diagram');
+      await vscPage.openFile('sort-test.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
-      const tab = vscPage.page.locator('.tab').filter({ hasText: 'sort-test.diagram' });
+      const tab = vscPage.page.locator('.tab').filter({ hasText: 'sort-test.diagram.svg' });
       await expect(tab).toBeVisible({ timeout: 10000 });
 
       const beforeDoc = readDiagram();
@@ -71,7 +78,7 @@ test.describe.serial('Sort Nodes', () => {
     const restore = backupAndRestore();
 
     try {
-      await vscPage.openFile('sort-test.diagram');
+      await vscPage.openFile('sort-test.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
       await vscPage.executeCommand('DiagramFlow: Sort Nodes');
@@ -82,7 +89,7 @@ test.describe.serial('Sort Nodes', () => {
       // Sort direction must be set (defaults to TB when not previously set)
       expect(['TB', 'LR', 'BT', 'RL']).toContain(afterDoc.meta.layoutDirection);
 
-      // sort-test.diagram nodes in their ORIGINAL positions:
+      // sort-test.diagram.svg nodes in their ORIGINAL positions:
       //   n3: y=100, x=300  |  n1: y=100, x=400  |  n2: y=200, x=100
       // After TB sort (y asc → x asc within same y):
       //   sorted order: n3, n1, n2
@@ -106,10 +113,10 @@ test.describe.serial('Sort Nodes', () => {
   test('standalone direction button (btn-layout-direction) is removed from toolbar', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('sort-test.diagram');
+    await vscPage.openFile('sort-test.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'sort-test.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'sort-test.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // Webview iframe must be present (extension is active)
@@ -133,10 +140,10 @@ test.describe.serial('Sort Nodes', () => {
     const restore = backupAndRestore();
 
     try {
-      await vscPage.openFile('sort-test.diagram');
+      await vscPage.openFile('sort-test.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
-      const tab = vscPage.page.locator('.tab').filter({ hasText: 'sort-test.diagram' });
+      const tab = vscPage.page.locator('.tab').filter({ hasText: 'sort-test.diagram.svg' });
       await expect(tab).toBeVisible({ timeout: 10000 });
 
       await vscPage.executeCommand('DiagramFlow: Sort Nodes');

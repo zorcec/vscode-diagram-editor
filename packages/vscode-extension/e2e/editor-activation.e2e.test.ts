@@ -12,7 +12,7 @@ test.describe('Custom Editor Activation', () => {
   test('custom editor renders webview for .diagram file', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
     const webview = vscPage.page.locator('iframe.webview, .webview-element');
@@ -30,14 +30,14 @@ test.describe('Custom Editor Activation', () => {
   test('no plain text editor shown for .diagram files', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
     // A properly registered custom editor should NOT show the text editor
     // (the Monaco editor lines should not be visible for .diagram files)
     // However, if the custom editor fails to load, VS Code falls back to text
     // This test checks that the file tab is labeled correctly
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     const isVisible = await tab.isVisible({ timeout: 5000 }).catch(() => false);
     expect(isVisible).toBe(true);
   });

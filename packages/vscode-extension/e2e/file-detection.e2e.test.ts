@@ -10,7 +10,7 @@ import { test } from './fixtures/vscode-suite-fixtures';
 
 test.describe('File Detection', () => {
   test('opens .diagram file without errors', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
 
     const hasErrors = (await vscPage.getNotifications()).some(
       (n) =>
@@ -21,16 +21,16 @@ test.describe('File Detection', () => {
   });
 
   test('.diagram file tab shows in editor', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
 
-    const isOpen = await vscPage.isFileOpen('simple.diagram');
+    const isOpen = await vscPage.isFileOpen('simple.diagram.svg');
     expect(isOpen).toBe(true);
   });
 
   test('opens empty diagram file', async ({ vscPage }) => {
-    await vscPage.openFile('empty.diagram');
+    await vscPage.openFile('empty.diagram.svg');
 
-    const isOpen = await vscPage.isFileOpen('empty.diagram');
+    const isOpen = await vscPage.isFileOpen('empty.diagram.svg');
     expect(isOpen).toBe(true);
 
     const hasErrors = (await vscPage.getNotifications()).some(
@@ -42,9 +42,9 @@ test.describe('File Detection', () => {
   });
 
   test('opens complex diagram with groups', async ({ vscPage }) => {
-    await vscPage.openFile('complex.diagram');
+    await vscPage.openFile('complex.diagram.svg');
 
-    const isOpen = await vscPage.isFileOpen('complex.diagram');
+    const isOpen = await vscPage.isFileOpen('complex.diagram.svg');
     expect(isOpen).toBe(true);
   });
 });

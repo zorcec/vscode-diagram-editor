@@ -39,7 +39,7 @@ test.describe('@llm Visual Verification', { tag: '@llm' }, () => {
   test('simple diagram shows expected nodes and edges', async ({ vscPage }) => {
     test.skip(remainingLLMCalls() < 1, 'LLM budget exhausted');
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(5000);
 
     const editorArea = vscPage.page.locator('.editor-group-container');
@@ -56,7 +56,7 @@ test.describe('@llm Visual Verification', { tag: '@llm' }, () => {
       const diagramPath = path.resolve(
         __dirname,
         'test-project',
-        'simple.diagram',
+        'simple.diagram.svg',
       );
       const diagramJson = fs.readFileSync(diagramPath, 'utf-8');
       result = await verifyDiagramStructureWithLLM(
@@ -72,13 +72,13 @@ test.describe('@llm Visual Verification', { tag: '@llm' }, () => {
   test('empty diagram has no nodes', async ({ vscPage }) => {
     test.skip(remainingLLMCalls() < 1, 'LLM budget exhausted');
 
-    await vscPage.openFile('empty.diagram');
+    await vscPage.openFile('empty.diagram.svg');
     await vscPage.page.waitForTimeout(4000);
 
     const diagramPath = path.resolve(
       __dirname,
       'test-project',
-      'empty.diagram',
+      'empty.diagram.svg',
     );
     const diagramJson = fs.readFileSync(diagramPath, 'utf-8');
 
@@ -96,13 +96,13 @@ test.describe('@llm Visual Verification', { tag: '@llm' }, () => {
   }) => {
     test.skip(remainingLLMCalls() < 1, 'LLM budget exhausted');
 
-    await vscPage.openFile('complex.diagram');
+    await vscPage.openFile('complex.diagram.svg');
     await vscPage.page.waitForTimeout(5000);
 
     const diagramPath = path.resolve(
       __dirname,
       'test-project',
-      'complex.diagram',
+      'complex.diagram.svg',
     );
     const diagramJson = fs.readFileSync(diagramPath, 'utf-8');
 

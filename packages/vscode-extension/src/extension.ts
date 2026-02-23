@@ -4,9 +4,9 @@ import { DiagramService } from './DiagramService';
 import { registerDiagramTools } from './tools';
 import { buildDocumentSvg } from './lib/exporters';
 
-/** Returns true when a file path belongs to a diagram (either format). */
+/** Returns true when a file path belongs to a diagram. */
 function isDiagramFile(fileName: string): boolean {
-  return fileName.endsWith('.diagram.svg') || (fileName.endsWith('.diagram') && !fileName.endsWith('.diagram.svg'));
+  return fileName.endsWith('.diagram.svg');
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -66,8 +66,7 @@ export function deactivate(): void {}
 async function promptForNewDiagramLocation(): Promise<vscode.Uri | undefined> {
   const uri = await vscode.window.showSaveDialog({
     filters: {
-      'Diagram (SVG with embedded data)': ['diagram.svg'],
-      'Diagram (JSON)': ['diagram'],
+      'DiagramFlow (SVG with embedded data)': ['diagram.svg'],
     },
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri
       ? vscode.Uri.joinPath(
@@ -84,8 +83,6 @@ async function createEmptyDiagramFile(
   diagramService: DiagramService,
 ): Promise<void> {
   const doc = diagramService.emptyDocument();
-  // New .diagram.svg files are stored as SVG with the JSON embedded in <metadata>.
-  const isSvg = uri.fsPath.endsWith('.svg');
-  const content = isSvg ? buildDocumentSvg(doc) : JSON.stringify(doc, null, 2);
+  const content = buildDocumentSvg(doc);
   await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
 }

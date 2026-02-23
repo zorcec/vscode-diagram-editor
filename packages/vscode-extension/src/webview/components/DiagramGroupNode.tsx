@@ -15,11 +15,13 @@ export const DiagramGroupNode = memo(({ id, data, selected }: DiagramGroupNodePr
   return (
     <div
       className={`diagram-group ${colorClass}${selected ? ' diagram-group--selected' : ''}${collapsedClass}`}
-      onDoubleClick={() => data.onToggleCollapse?.(id)}
-      title={data.collapsed ? 'Double-click to expand group' : 'Double-click to collapse group'}
       data-testid="diagram-group-node"
     >
-      <span className="diagram-group-label">
+      <span
+        className="diagram-group-label"
+        onClick={(e) => { e.stopPropagation(); data.onToggleCollapse?.(id); }}
+        title={data.collapsed ? 'Click to expand group' : 'Click to collapse group'}
+      >
         {data.collapsed ? '▶ ' : '▼ '}
         {data.label}
       </span>

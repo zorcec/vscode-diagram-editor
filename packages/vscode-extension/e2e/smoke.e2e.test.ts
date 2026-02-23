@@ -50,10 +50,10 @@ test.describe('Smoke: Extension loads without errors', () => {
   test('opens a diagram file and renders the editor tab', async ({ vscPage }) => {
     const getErrors = collectErrors(vscPage.page);
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(3000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // No uncaught errors during initial load
@@ -63,10 +63,10 @@ test.describe('Smoke: Extension loads without errors', () => {
 
 test.describe('Smoke: Undo / Redo commands', () => {
   test('undo command executes without crashing the editor', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     await runCommand(vscPage.page, 'DiagramFlow: Undo');
@@ -76,10 +76,10 @@ test.describe('Smoke: Undo / Redo commands', () => {
   });
 
   test('redo command executes without crashing the editor', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     await runCommand(vscPage.page, 'DiagramFlow: Redo');
@@ -90,10 +90,10 @@ test.describe('Smoke: Undo / Redo commands', () => {
 
 test.describe('Smoke: Force Auto-Layout command', () => {
   test('force layout command executes without crashing the editor', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     await runCommand(vscPage.page, 'DiagramFlow: Force Auto Layout');
@@ -104,10 +104,10 @@ test.describe('Smoke: Force Auto-Layout command', () => {
 
 test.describe('Smoke: Add Node command', () => {
   test('add node command executes without crashing the editor', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     await runCommand(vscPage.page, 'DiagramFlow: Add Node');

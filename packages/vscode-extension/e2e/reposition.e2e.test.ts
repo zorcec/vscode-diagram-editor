@@ -18,12 +18,24 @@ import { test } from './fixtures/vscode-suite-fixtures';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const GROUPS_DIAGRAM = path.resolve(__dirname, 'test-project', 'groups.diagram');
-const SIMPLE_DIAGRAM = path.resolve(__dirname, 'test-project', 'simple.diagram');
+const GROUPS_DIAGRAM = path.resolve(__dirname, 'test-project', 'groups.diagram.svg');
+const SIMPLE_DIAGRAM = path.resolve(__dirname, 'test-project', 'simple.diagram.svg');
 
-/** Read and parse the current state of a .diagram file from disk. */
+/** Read and parse the current state of a .diagram.svg file from disk. */
 function readDiagram(filePath: string): any {
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  const content = fs.readFileSync(filePath, 'utf-8');
+  // .diagram.svg files embed the diagram JSON in a <diagramflow:source> element.
+  if (filePath.endsWith('.svg')) {
+    const match = content.match(/<diagramflow:source[^>]*>([\s\S]*?)<\/diagramflow:source>/);
+    if (match?.[1]) {
+      const unescaped = match[1].trim()
+        .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+      return JSON.parse(unescaped);
+    }
+    throw new Error(`No embedded diagram JSON found in ${filePath}`);
+  }
+  return JSON.parse(content);
 }
 
 /** Save original content and return a restore function. */
@@ -34,7 +46,7 @@ function backupAndRestore(filePath: string): () => void {
 
 test.describe('Node Repositioning & Sort', () => {
   test('sort command is available in command palette', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
     await vscPage.page.keyboard.press('Control+Shift+P');
@@ -52,10 +64,10 @@ test.describe('Node Repositioning & Sort', () => {
   });
 
   test('sort command executes without crashing the editor', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     await vscPage.page.keyboard.press('Control+Shift+P');
@@ -86,7 +98,7 @@ test.describe('Node Repositioning & Sort', () => {
       const nodeCount = before.nodes.length;
       const edgeCount = before.edges.length;
 
-      await vscPage.openFile('simple.diagram');
+      await vscPage.openFile('simple.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
       await vscPage.executeCommand('DiagramFlow: Sort Nodes');
@@ -105,10 +117,10 @@ test.describe('Node Repositioning & Sort', () => {
     const restore = backupAndRestore(SIMPLE_DIAGRAM);
 
     try {
-      await vscPage.openFile('simple.diagram');
+      await vscPage.openFile('simple.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
-      // simple.diagram has nodes at x=40, x=280, x=520, all y=40.
+      // simple.diagram.svg has nodes at x=40, x=280, x=520, all y=40.
       // TB sort: sort by y asc then x asc → order should be n1(40), n2(280), n3(520).
       await vscPage.executeCommand('DiagramFlow: Sort Nodes');
       await vscPage.page.waitForTimeout(2500);
@@ -132,7 +144,7 @@ test.describe('Node Repositioning & Sort', () => {
       const totalNodes = before.nodes.length;
       const totalGroups = before.groups.length;
 
-      await vscPage.openFile('groups.diagram');
+      await vscPage.openFile('groups.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
       await vscPage.executeCommand('DiagramFlow: Sort Nodes');
@@ -161,7 +173,7 @@ test.describe('Node Repositioning & Sort', () => {
       // Find grouped node ids in their initial order.
       const groupedIdsBefore = before.nodes.filter((n: any) => n.group).map((n: any) => n.id);
 
-      await vscPage.openFile('groups.diagram');
+      await vscPage.openFile('groups.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
       await vscPage.executeCommand('DiagramFlow: Sort Nodes');
@@ -185,7 +197,7 @@ test.describe('Node Repositioning & Sort', () => {
     const restore = backupAndRestore(SIMPLE_DIAGRAM);
 
     try {
-      await vscPage.openFile('simple.diagram');
+      await vscPage.openFile('simple.diagram.svg');
       await vscPage.page.waitForTimeout(2000);
 
       // Run auto-layout which repositions nodes and writes positions back to file.
@@ -204,7 +216,7 @@ test.describe('Node Repositioning & Sort', () => {
 
       // At least one node must have been repositioned (layout should not be a no-op
       // given that initial positions are all on the same row).
-      const originalDoc = JSON.parse(fs.readFileSync(SIMPLE_DIAGRAM, 'utf-8'));
+      const originalDoc = readDiagram(SIMPLE_DIAGRAM);
       const repositioned = after.nodes.some((n: any, i: number) => {
         const orig = originalDoc.nodes[i];
         return orig && (n.x !== orig.x || n.y !== orig.y);
@@ -226,10 +238,10 @@ test.describe('Node Repositioning & Sort', () => {
       }
     });
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(4000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // No critical rendering errors.
@@ -240,10 +252,10 @@ test.describe('Node Repositioning & Sort', () => {
   });
 
   test('groups diagram opens and toolbox is present', async ({ vscPage }) => {
-    await vscPage.openFile('groups.diagram');
+    await vscPage.openFile('groups.diagram.svg');
     await vscPage.page.waitForTimeout(4000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'groups.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'groups.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // Webview iframe must be present (toolbox rendered inside it).

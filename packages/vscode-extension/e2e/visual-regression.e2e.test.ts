@@ -16,10 +16,10 @@ test.describe('Visual Regression', () => {
   test.describe.configure({ retries: 0 });
 
   test('simple diagram renders without errors', async ({ vscPage }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2500);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     const editorArea = vscPage.page.locator('.editor-group-container');
@@ -30,10 +30,10 @@ test.describe('Visual Regression', () => {
   });
 
   test('empty diagram shows clean canvas', async ({ vscPage }) => {
-    await vscPage.openFile('empty.diagram');
+    await vscPage.openFile('empty.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'empty.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'empty.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     const editorArea = vscPage.page.locator('.editor-group-container');
@@ -43,10 +43,10 @@ test.describe('Visual Regression', () => {
   });
 
   test('complex diagram with multiple shapes renders', async ({ vscPage }) => {
-    await vscPage.openFile('complex.diagram');
+    await vscPage.openFile('complex.diagram.svg');
     await vscPage.page.waitForTimeout(2500);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'complex.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'complex.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     const editorArea = vscPage.page.locator('.editor-group-container');

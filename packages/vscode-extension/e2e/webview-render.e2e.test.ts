@@ -15,6 +15,19 @@ import { test } from './fixtures/vscode-suite-fixtures';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const SOURCE_RE = /<diagramflow:source[^>]*>([\s\S]*?)<\/diagramflow:source>/;
+
+/** Extract and parse diagram JSON from a .diagram.svg file. */
+function readDiagramSvg(filePath: string): any {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const match = content.match(SOURCE_RE);
+  if (!match?.[1]) throw new Error(`No diagram metadata in ${filePath}`);
+  const json = match[1].trim()
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return JSON.parse(json);
+}
+
 /** Returns true if no error notification toasts about missing resources appear */
 async function hasNoResourceErrorToast(page: import('@playwright/test').Page): Promise<boolean> {
   const toasts = page.locator('.notification-toast .notification-list-item-message');
@@ -32,11 +45,11 @@ test.describe('Webview Render', () => {
   test('webview iframe is created when opening .diagram file', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(3000);
 
     // Tab must be visible
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // VS Code should have created at least one iframe for the webview
@@ -61,7 +74,7 @@ test.describe('Webview Render', () => {
       }
     });
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(4000);
 
     expect(resourceErrors).toHaveLength(0);
@@ -70,47 +83,46 @@ test.describe('Webview Render', () => {
   test('webview shows editor pane without error toasts', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(3000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     const noErrors = await hasNoResourceErrorToast(vscPage.page);
     expect(noErrors).toBe(true);
   });
 
-  test('empty.diagram opens without crash', async ({ vscPage }) => {
-    await vscPage.openFile('empty.diagram');
+  test('empty.diagram.svg opens without crash', async ({ vscPage }) => {
+    await vscPage.openFile('empty.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'empty.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'empty.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     const noErrors = await hasNoResourceErrorToast(vscPage.page);
     expect(noErrors).toBe(true);
   });
 
-  test('complex.diagram opens without crash', async ({ vscPage }) => {
-    await vscPage.openFile('complex.diagram');
+  test('complex.diagram.svg opens without crash', async ({ vscPage }) => {
+    await vscPage.openFile('complex.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'complex.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'complex.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     const noErrors = await hasNoResourceErrorToast(vscPage.page);
     expect(noErrors).toBe(true);
   });
 
-  test('simple.diagram JSON structure is valid and parseable', async ({
+  test('simple.diagram.svg JSON structure is valid and parseable', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(1000);
 
-    const filePath = path.resolve(__dirname, 'test-project', 'simple.diagram');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const doc = JSON.parse(content);
+    const filePath = path.resolve(__dirname, 'test-project', 'simple.diagram.svg');
+    const doc = readDiagramSvg(filePath);
 
     expect(doc.nodes).toHaveLength(3);
     expect(doc.edges).toHaveLength(2);
@@ -127,10 +139,10 @@ test.describe('Webview Render', () => {
     // Verify the HTML template references the correct asset paths
     // The webview HTML is built from getWebviewContent.ts - we just check
     // that the extension loaded (tab visible) which confirms the HTML was served
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // Confirm extension is active (indicates resolveCustomTextEditor ran)
@@ -155,11 +167,11 @@ test.describe('Webview Render', () => {
       }
     });
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     // Wait long enough for the webview to fully initialise and render
     await vscPage.page.waitForTimeout(5000);
 
-    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram' });
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'simple.diagram.svg' });
     await expect(tab).toBeVisible({ timeout: 10000 });
 
     // No extension-host NaN errors should have surfaced
@@ -169,12 +181,11 @@ test.describe('Webview Render', () => {
   test('diagram file nodes have valid positive dimensions to prevent NaN SVG paths', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(1000);
 
-    const filePath = path.resolve(__dirname, 'test-project', 'simple.diagram');
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const doc = JSON.parse(content);
+    const filePath = path.resolve(__dirname, 'test-project', 'simple.diagram.svg');
+    const doc = readDiagramSvg(filePath);
 
     for (const node of doc.nodes) {
       expect(typeof node.x).toBe('number');

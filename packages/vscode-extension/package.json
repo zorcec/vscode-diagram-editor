@@ -58,24 +58,12 @@
         "selector": [
           {
             "filenamePattern": "*.diagram.svg"
-          },
-          {
-            "filenamePattern": "*.diagram"
           }
         ],
         "priority": "default"
       }
     ],
     "languages": [
-      {
-        "id": "diagram",
-        "extensions": [
-          ".diagram"
-        ],
-        "aliases": [
-          "Diagram"
-        ]
-      },
       {
         "id": "diagram-svg",
         "extensions": [

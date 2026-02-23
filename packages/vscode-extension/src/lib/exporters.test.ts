@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { exportToMermaid, exportToSVG } from './exporters';
+import { exportToMermaid, exportToSVG, buildDocumentSvg } from './exporters';
+import { extractDiagramFromSvg } from './svgMetadata';
 import type { DiagramDocument } from '../types/DiagramDocument';
 
 function makeDoc(): DiagramDocument {
@@ -170,5 +171,61 @@ describe('exportToSVG', () => {
   it('should handle rounded node shape with rx attribute', () => {
     const result = exportToSVG(makeDoc());
     expect(result).toContain('rx="8"');
+  });
+});
+
+describe('buildDocumentSvg', () => {
+  it('should produce valid SVG with viewBox and embedded metadata', () => {
+    const svg = buildDocumentSvg(makeDoc());
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('viewBox=');
+    expect(svg).toContain('diagramflow:source');
+    expect(svg).toContain('</svg>');
+  });
+
+  it('should embed parseable diagram JSON without XML-escaping quotes', () => {
+    const doc = makeDoc();
+    const svg = buildDocumentSvg(doc);
+    // The JSON inside <diagramflow:source> must not have &quot; entities
+    expect(svg).not.toContain('&quot;');
+    const json = extractDiagramFromSvg(svg);
+    expect(json).not.toBeNull();
+    const parsed = JSON.parse(json!);
+    expect(parsed.nodes).toHaveLength(doc.nodes.length);
+    expect(parsed.edges).toHaveLength(doc.edges.length);
+  });
+
+  it('round-trips the full diagram document', () => {
+    const doc = makeDoc();
+    const svg = buildDocumentSvg(doc);
+    const json = extractDiagramFromSvg(svg);
+    const recovered = JSON.parse(json!);
+    expect(recovered.nodes[0].label).toBe(doc.nodes[0].label);
+    expect(recovered.edges[0].source).toBe(doc.edges[0].source);
+    expect(recovered.meta.title).toBe(doc.meta.title);
+  });
+
+  it('uses correct viewBox covering all nodes with padding', () => {
+    // n1@(80,200,120,48), n2@(300,200,160,48), n3@(520,200,140,48)
+    // minX=80, maxRight=660, pad=40 → vbX=40, vbW=660
+    // minY=200, maxBottom=248, pad=40 → vbY=160, vbH=128
+    const svg = buildDocumentSvg(makeDoc());
+    expect(svg).toContain('viewBox="40 160 660 128"');
+  });
+
+  it('escapes & and < in node labels inside embedded JSON', () => {
+    const doc = makeDoc();
+    doc.nodes[0].label = 'A&B < C';
+    const svg = buildDocumentSvg(doc);
+    const json = extractDiagramFromSvg(svg);
+    const recovered = JSON.parse(json!);
+    expect(recovered.nodes[0].label).toBe('A&B < C');
+  });
+
+  it('renders dark background and node/edge layers', () => {
+    const svg = buildDocumentSvg(makeDoc());
+    expect(svg).toContain('fill="#1e1e1e"');
+    expect(svg).toContain('id="node-layer"');
+    expect(svg).toContain('id="edge-layer"');
   });
 });

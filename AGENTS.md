@@ -68,7 +68,7 @@ npm run lint:fix    # auto-fix fixable issues (formatting, simple style)
 
 ## Architecture Diagram Reference
 
-- The project architecture is documented in [architecture.diagram](architecture.diagram).
+- The project architecture is documented in [architecture.diagram.svg](architecture.diagram.svg).
 - This diagram provides a visual overview of all major components, their relationships, and operational flow.
 - Before beginning work, run the DiagramFlow tools (e.g. `diagramflow_getDiagram`) to programmatically read and inspect the diagram; the visual often holds key structural details.
 - All agents MUST read and understand the diagram before starting any project-related tasks.
@@ -78,6 +78,48 @@ npm run lint:fix    # auto-fix fixable issues (formatting, simple style)
 - Illustrates the extension entry, DiagramEditorProvider, DiagramService, LM tools, core libraries, and webview components.
 - Shows how user actions, Copilot, and tools interact with the extension and diagram services.
 - Essential for understanding dependencies and operational flow.
+
+---
+
+## Diagram File Format
+
+The **only supported diagram format** is `.diagram.svg` — SVG files with the diagram JSON embedded inside a `<diagramflow:source>` XML element within `<metadata>`.
+
+### Why `.diagram.svg`?
+- Opens as a rendered SVG in any editor (GitHub, VS Code preview, browsers) without requiring the DiagramFlow extension.
+- When opened in VS Code with the DiagramFlow extension installed, the full interactive editor is activated.
+- Agents can parse and modify diagrams programmatically via the LM tools.
+
+### Working with diagram files
+
+| Task | How |
+|---|---|
+| Read diagram structure | `diagramflow_readDiagram` (human-readable) |
+| Inspect node/edge IDs | `diagramflow_getDiagram` |
+| Add nodes | `diagramflow_addNodes` |
+| Add edges | `diagramflow_addEdges` |
+| Update nodes | `diagramflow_updateNodes` |
+| Remove nodes | `diagramflow_removeNodes` |
+| Manage groups | `diagramflow_addGroups` / `diagramflow_updateGroups` / `diagramflow_removeGroups` |
+
+**Never** create or edit `.diagram.svg` files by hand. Always use the DiagramFlow tools listed above.
+
+### Creating a new diagram
+1. Use the **DiagramFlow: New Diagram** command in VS Code — it always creates a `.diagram.svg` file.
+2. Or provide an empty SVG shell and populate it via tools.
+
+### Format internals (for reference only)
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="..." width="..." height="...">
+  <metadata>
+    <diagramflow:source xmlns:diagramflow="https://diagramflow.vscode/schema">
+      { /* diagram JSON — nodes, edges, groups, meta */ }
+    </diagramflow:source>
+  </metadata>
+  <!-- SVG rendering of the diagram -->
+</svg>
+```
 
 ## User Input
 - Always try to use what used 3rd parties offer before implementing custom solutions. For example, ReactFlow provides built-in support for box selection and edge reconnection, so leverage those features instead of building them from scratch.

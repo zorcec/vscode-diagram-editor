@@ -13,6 +13,7 @@ interface ToolbarProps {
   onRedo: () => void;
   onToggleSearch: () => void;
   onToggleShortcuts: () => void;
+  onViewMetadata: () => void;
   layoutDirection: LayoutDirection;
   onSetLayoutDirection: (dir: LayoutDirection) => void;
   selectedGroupId: string | null;
@@ -75,6 +76,7 @@ export function Toolbar({
   onRedo,
   onToggleSearch,
   onToggleShortcuts,
+  onViewMetadata,
   layoutDirection,
   onSetLayoutDirection,
   selectedGroupId,
@@ -220,6 +222,10 @@ export function Toolbar({
         <button onClick={onToggleShortcuts} title="Keyboard shortcuts (?)" data-testid="btn-shortcuts" className="toolbox-btn">
           <span className="toolbox-btn-icon">?</span>
           <span className="toolbox-btn-label">Keys</span>
+        </button>
+        <button onClick={onViewMetadata} title="View diagram metadata passed to AI agents" data-testid="btn-view-metadata" className="toolbox-btn">
+          <span className="toolbox-btn-icon">{'{}'}</span>
+          <span className="toolbox-btn-label">Metadata</span>
         </button>
       </ToolSection>
     </Panel>

@@ -345,6 +345,7 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
     onRedo: graph.onRedo,
     onToggleSearch: () => setShowSearch((v) => !v),
     onToggleShortcuts: () => setShowShortcuts((v) => !v),
+    onViewMetadata: graph.onViewMetadata,
     layoutDirection: graph.layoutDirection,
     onSetLayoutDirection: graph.onSetLayoutDirection,
     selectedGroupId: graph.selectedGroupId,

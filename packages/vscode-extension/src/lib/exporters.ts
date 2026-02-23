@@ -188,7 +188,9 @@ export function buildDocumentSvg(doc: DiagramDocument): string {
   const textSvg = buildTextElementsSvg(doc.textElements ?? []);
   const imageSvg = buildImageElementsSvg(doc.imageElements ?? []);
 
-  const jsonData = escapeXml(JSON.stringify(doc));
+  // Only escape &, < and > in element text content — " does not need escaping there
+  // and over-escaping with &quot; would break round-trip parsing via regex + JSON.parse.
+  const jsonData = JSON.stringify(doc).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const metadataXml = `<metadata><diagramflow:source xmlns:diagramflow="${DIAGRAM_NS}">${jsonData}</diagramflow:source></metadata>`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>

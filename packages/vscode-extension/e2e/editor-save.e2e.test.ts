@@ -1,8 +1,8 @@
 /**
- * E2E test: Editor Save (.diagram round-trip)
+ * E2E test: Editor Save (.diagram.svg round-trip)
  *
- * Verifies that .diagram files can be opened, modified via commands,
- * and the JSON content is preserved correctly.
+ * Verifies that .diagram.svg files can be opened, modified via commands,
+ * and the diagram content is preserved correctly.
  */
 
 import { expect } from '@playwright/test';
@@ -10,38 +10,48 @@ import { test } from './fixtures/vscode-suite-fixtures';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const SOURCE_RE = /<diagramflow:source[^>]*>([\s\S]*?)<\/diagramflow:source>/;
+
+/** Extract and parse diagram JSON from a .diagram.svg file. */
+function readDiagramSvg(filePath: string): any {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const match = content.match(SOURCE_RE);
+  if (!match?.[1]) throw new Error(`No diagram metadata in ${filePath}`);
+  const json = match[1].trim()
+    .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return JSON.parse(json);
+}
+
 test.describe('Editor Save', () => {
-  test('diagram JSON structure is preserved after open', async ({
+  test('diagram structure is preserved after open', async ({
     vscPage,
   }) => {
     const filePath = path.resolve(
       __dirname,
       'test-project',
-      'simple.diagram',
+      'simple.diagram.svg',
     );
-    const originalContent = fs.readFileSync(filePath, 'utf-8');
-    const originalDoc = JSON.parse(originalContent);
+    const originalDoc = readDiagramSvg(filePath);
 
-    await vscPage.openFile('simple.diagram');
+    await vscPage.openFile('simple.diagram.svg');
     await vscPage.page.waitForTimeout(2000);
 
     // Read the file again to verify it hasn't been corrupted
-    const afterContent = fs.readFileSync(filePath, 'utf-8');
-    const afterDoc = JSON.parse(afterContent);
+    const afterDoc = readDiagramSvg(filePath);
 
     expect(afterDoc.meta.title).toBe(originalDoc.meta.title);
     expect(afterDoc.nodes).toHaveLength(originalDoc.nodes.length);
     expect(afterDoc.edges).toHaveLength(originalDoc.edges.length);
   });
 
-  test('empty diagram file is valid JSON', async ({}) => {
+  test('empty diagram file has valid embedded metadata', async ({}) => {
     const filePath = path.resolve(
       __dirname,
       'test-project',
-      'empty.diagram',
+      'empty.diagram.svg',
     );
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const doc = JSON.parse(content);
+    const doc = readDiagramSvg(filePath);
 
     expect(doc.meta).toBeDefined();
     expect(doc.nodes).toEqual([]);
@@ -52,10 +62,9 @@ test.describe('Editor Save', () => {
     const filePath = path.resolve(
       __dirname,
       'test-project',
-      'complex.diagram',
+      'complex.diagram.svg',
     );
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const doc = JSON.parse(content);
+    const doc = readDiagramSvg(filePath);
 
     expect(doc.groups).toHaveLength(2);
     expect(doc.groups[0].label).toBe('Input Layer');

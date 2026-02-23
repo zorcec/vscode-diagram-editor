@@ -111,6 +111,7 @@ export interface GraphState {
   onPaste: () => void;
   onSetSearch: (query: string) => void;
   onFitViewDone: () => void;
+  onViewMetadata: () => void;
 }
 
 export function useGraphState(
@@ -583,6 +584,10 @@ export function useGraphState(
     setLayoutPending(false);
   }, []);
 
+  const onViewMetadata = useCallback(() => {
+    bridge.postMessage({ type: 'VIEW_METADATA' });
+  }, [bridge]);
+
   return {
     nodes,
     allNodes,
@@ -633,5 +638,6 @@ export function useGraphState(
     onPaste,
     onSetSearch,
     onFitViewDone,
+    onViewMetadata,
   };
 }

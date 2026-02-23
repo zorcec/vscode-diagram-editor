@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 60 540 228" width="540" height="228">
+<metadata><diagramflow:source xmlns:diagramflow="https://diagramflow.vscode/schema">{"meta":{"version":"1.0","title":"Sort Test Diagram","created":"2025-01-01T00:00:00Z","modified":"2025-01-01T00:00:00Z"},"nodes":[{"id":"n1","label":"Right Node","shape":"rectangle","color":"blue","x":400,"y":100,"width":160,"height":48,"pinned":false},{"id":"n2","label":"Bottom Left","shape":"rectangle","color":"default","x":100,"y":200,"width":160,"height":48,"pinned":false},{"id":"n3","label":"Middle Node","shape":"rectangle","color":"green","x":300,"y":100,"width":160,"height":48,"pinned":false}],"edges":[],"groups":[],"viewport":{"x":0,"y":0,"zoom":1}}</diagramflow:source></metadata>
+<rect x="60" y="60" width="540" height="228" fill="#1e1e1e"/>
+<defs>
+  <marker id="arrow-normal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#888"/></marker>
+  <marker id="arrow-open" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polyline points="0 0, 10 3.5, 0 7" fill="none" stroke="#888" stroke-width="1.5"/></marker>
+</defs>
+<g id="edge-layer"></g>
+<g id="node-layer"><g transform="translate(400,100)"><rect width="160" height="48" rx="4" ry="4" fill="#1e3a5f" stroke="#4a90d9" stroke-width="2"/><text x="80" y="25" text-anchor="middle" dominant-baseline="middle" fill="#90c4f9" font-size="13">Right Node</text></g>
+<g transform="translate(100,200)"><rect width="160" height="48" rx="4" ry="4" fill="#2d2d2d" stroke="#555" stroke-width="2"/><text x="80" y="25" text-anchor="middle" dominant-baseline="middle" fill="#ccc" font-size="13">Bottom Left</text></g>
+<g transform="translate(300,100)"><rect width="160" height="48" rx="4" ry="4" fill="#1a3a1a" stroke="#4a9a4a" stroke-width="2"/><text x="80" y="25" text-anchor="middle" dominant-baseline="middle" fill="#90d490" font-size="13">Middle Node</text></g></g>
+<g id="text-layer"></g>
+<g id="image-layer"></g>
+</svg>

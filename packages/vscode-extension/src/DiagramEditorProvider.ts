@@ -241,6 +241,10 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
         await DiagramEditorProvider.openSvgImportFlow();
         break;
 
+      case 'VIEW_METADATA':
+        await this.viewMetadata(document);
+        break;
+
       // -----------------------------------------------------------------------
       // Text elements
       // -----------------------------------------------------------------------
@@ -330,6 +334,32 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
         );
         break;
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // View Metadata: show the full diagram data as a formatted read-only document
+  // ---------------------------------------------------------------------------
+
+  private async viewMetadata(document: vscode.TextDocument): Promise<void> {
+    const doc = this.diagramService.parseDocument(document);
+    if (!doc) {
+      vscode.window.showErrorMessage('Could not parse the diagram document.');
+      return;
+    }
+
+    // Build a human-readable metadata view that shows what the agent tools see.
+    const metadataView = {
+      'diagram-title': doc.meta.title,
+      'agent-context': doc.agentContext ?? null,
+      'full-document': doc,
+    };
+
+    const jsonContent = JSON.stringify(metadataView, null, 2);
+    const metaDoc = await vscode.workspace.openTextDocument({
+      content: jsonContent,
+      language: 'json',
+    });
+    await vscode.window.showTextDocument(metaDoc, { preview: true, preserveFocus: false });
   }
 
   // ---------------------------------------------------------------------------

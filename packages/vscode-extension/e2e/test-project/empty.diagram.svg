@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -40 480 280" width="480" height="280">
+<metadata><diagramflow:source xmlns:diagramflow="https://diagramflow.vscode/schema">{"meta":{"version":"1.0","title":"Empty Diagram","created":"2025-01-01T00:00:00Z","modified":"2025-01-01T00:00:00Z"},"nodes":[],"edges":[],"groups":[],"viewport":{"x":0,"y":0,"zoom":1}}</diagramflow:source></metadata>
+<rect x="-40" y="-40" width="480" height="280" fill="#1e1e1e"/>
+<defs>
+  <marker id="arrow-normal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#888"/></marker>
+  <marker id="arrow-open" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polyline points="0 0, 10 3.5, 0 7" fill="none" stroke="#888" stroke-width="1.5"/></marker>
+</defs>
+<g id="edge-layer"></g>
+<g id="node-layer"></g>
+<g id="text-layer"></g>
+<g id="image-layer"></g>
+</svg>

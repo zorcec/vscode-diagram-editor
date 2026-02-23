@@ -775,6 +775,11 @@ body {
   padding: 0 5px;
   white-space: nowrap;
   user-select: none;
+  cursor: pointer;
+}
+
+.diagram-group-label:hover {
+  opacity: 0.8;
 }
 
 /* Group border color variants */
