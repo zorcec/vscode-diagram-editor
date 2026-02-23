@@ -228,4 +228,52 @@ describe('buildDocumentSvg', () => {
     expect(svg).toContain('id="node-layer"');
     expect(svg).toContain('id="edge-layer"');
   });
+
+  it('renders group-layer element', () => {
+    const svg = buildDocumentSvg(makeDoc());
+    expect(svg).toContain('id="group-layer"');
+  });
+
+  it('renders group rectangle and label when groups are present', () => {
+    const doc = makeDoc();
+    doc.groups = [{ id: 'g1', label: 'Backend', color: 'blue' }];
+    doc.nodes[1].group = 'g1';
+    doc.nodes[2].group = 'g1';
+    const svg = buildDocumentSvg(doc);
+    expect(svg).toContain('id="group-g1"');
+    expect(svg).toContain('Backend');
+    expect(svg).toContain('stroke-dasharray');
+  });
+
+  it('expands viewBox to include group padding above child nodes', () => {
+    const doc = makeDoc();
+    // n2 at y=200, n3 at y=200 — group with GROUP_PADDING=32, GROUP_LABEL_HEIGHT=28
+    // group top = 200 - 32 - 28 = 140, with pad=40: vbY = 140-40 = 100
+    // without groups: vbY = 200-40 = 160
+    doc.groups = [{ id: 'g1', label: 'Backend', color: 'blue' }];
+    doc.nodes[1].group = 'g1';
+    doc.nodes[2].group = 'g1';
+    const svg = buildDocumentSvg(doc);
+    // vbY must be ≤ 100 to include the group header
+    const match = svg.match(/viewBox="([-\d.]+) ([-\d.]+)/);
+    expect(match).not.toBeNull();
+    const vbY = parseFloat(match![2]);
+    expect(vbY).toBeLessThanOrEqual(100);
+  });
+
+  it('handles empty groups array without errors', () => {
+    const doc = makeDoc();
+    doc.groups = [];
+    expect(() => buildDocumentSvg(doc)).not.toThrow();
+  });
+
+  it('handles diagram with only groups and no nodes', () => {
+    const doc = makeDoc();
+    doc.nodes = [];
+    doc.edges = [];
+    doc.groups = [{ id: 'g1', label: 'Empty Group', x: 50, y: 50 }];
+    const svg = buildDocumentSvg(doc);
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('Empty Group');
+  });
 });

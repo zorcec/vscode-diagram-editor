@@ -7,6 +7,7 @@ type DiagramNodeProps = NodeProps & {
   data: DiagramNodeData & {
     onLabelChange?: (id: string, label: string) => void;
     onUnpin?: (id: string) => void;
+    onRemoveFromGroup?: (id: string) => void;
   };
 };
 
@@ -82,6 +83,15 @@ export const DiagramNode = memo(({ id, data, selected }: DiagramNodeProps) => {
               title="Unpin node (allow auto-layout to reposition)"
             >
               📍
+            </button>
+          )}
+          {data.onRemoveFromGroup && (
+            <button
+              className="toolbar-action-btn"
+              onClick={() => data.onRemoveFromGroup?.(id)}
+              title="Remove from group"
+            >
+              ⬡
             </button>
           )}
         </div>

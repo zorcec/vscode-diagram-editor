@@ -73,6 +73,7 @@ export interface GraphState {
   onNodeLabelChange: (id: string, label: string) => void;
   onTextContentChange: (nodeId: string, content: string) => void;
   onUnpinNode: (id: string) => void;
+  onRemoveFromGroup: (id: string) => void;
   onUpdateNodeProps: (
     id: string,
     changes: {
@@ -460,6 +461,13 @@ export function useGraphState(
     [bridge],
   );
 
+  const onRemoveFromGroup = useCallback(
+    (id: string) => {
+      bridge.postMessage({ type: 'UPDATE_NODE_PROPS', id, changes: { group: null } });
+    },
+    [bridge],
+  );
+
   const onUpdateNodeProps = useCallback(
     (
       id: string,
@@ -622,6 +630,7 @@ export function useGraphState(
     onNodeLabelChange,
     onTextContentChange,
     onUnpinNode,
+    onRemoveFromGroup,
     onUpdateNodeProps,
     onUpdateEdgeProps,
     onUpdateGroupProps,

@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import { DiagramEditorProvider } from './DiagramEditorProvider';
 import { DiagramService } from './DiagramService';
 import { registerDiagramTools } from './tools';
+import { TasksEditorProvider } from './TasksEditorProvider';
+import { registerTasksTools } from './tools/tasks';
 import { buildDocumentSvg } from './lib/exporters';
 
 /** Returns true when a file path belongs to a diagram. */
@@ -14,9 +16,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     DiagramEditorProvider.register(context, diagramService),
+    TasksEditorProvider.register(context),
   );
 
   registerDiagramTools(context, diagramService);
+  registerTasksTools(context);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('diagramflow.newDiagram', async () => {

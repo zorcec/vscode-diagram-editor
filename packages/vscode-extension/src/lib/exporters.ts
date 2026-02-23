@@ -1,4 +1,5 @@
-import type { DiagramDocument, NodeShape, EdgeStyle, ArrowType, TextElement, ImageElement } from '../types/DiagramDocument';
+import type { DiagramDocument, DiagramGroup, DiagramNode, NodeShape, EdgeStyle, ArrowType, TextElement, ImageElement } from '../types/DiagramDocument';
+import { GROUP_PADDING, GROUP_LABEL_HEIGHT, GROUP_MIN_WIDTH, GROUP_MIN_HEIGHT, DEFAULT_NODE_WIDTH, DEFAULT_NODE_HEIGHT } from '../types/DiagramDocument';
 
 const DIAGRAM_NS = 'https://diagramflow.vscode/schema';
 
@@ -151,6 +152,41 @@ function renderSVGEdge(x1: number, y1: number, x2: number, y2: number, label: st
 // buildDocumentSvg — dark-theme SVG with embedded JSON (used for .diagram.svg)
 // ---------------------------------------------------------------------------
 
+/** Computes the bounding box of a group's children, including GROUP_PADDING. */
+function computeGroupBox(
+  group: DiagramGroup,
+  nodes: DiagramNode[],
+): { x: number; y: number; width: number; height: number } | null {
+  const children = nodes.filter((n) => n.group === group.id);
+  if (children.length === 0) {
+    // Empty group: use stored position if available.
+    if (group.x !== undefined && group.y !== undefined) {
+      return { x: group.x, y: group.y, width: GROUP_MIN_WIDTH, height: GROUP_MIN_HEIGHT };
+    }
+    return null;
+  }
+  const minX = Math.min(...children.map((n) => n.x));
+  const minY = Math.min(...children.map((n) => n.y));
+  const maxX = Math.max(...children.map((n) => n.x + (n.width > 0 ? n.width : DEFAULT_NODE_WIDTH)));
+  const maxY = Math.max(...children.map((n) => n.y + (n.height > 0 ? n.height : DEFAULT_NODE_HEIGHT)));
+  return {
+    x: minX - GROUP_PADDING,
+    y: minY - GROUP_PADDING - GROUP_LABEL_HEIGHT,
+    width: Math.max(maxX - minX + 2 * GROUP_PADDING, GROUP_MIN_WIDTH),
+    height: Math.max(maxY - minY + 2 * GROUP_PADDING + GROUP_LABEL_HEIGHT, GROUP_MIN_HEIGHT),
+  };
+}
+
+const GROUP_FILL_COLORS: Record<string, { fill: string; stroke: string; text: string }> = {
+  default: { fill: 'rgba(60,60,60,0.4)', stroke: '#666', text: '#999' },
+  blue: { fill: 'rgba(30,58,95,0.4)', stroke: '#4a90d9', text: '#90c4f9' },
+  green: { fill: 'rgba(26,58,26,0.4)', stroke: '#4a9a4a', text: '#90d490' },
+  red: { fill: 'rgba(58,26,26,0.4)', stroke: '#c84040', text: '#f09090' },
+  yellow: { fill: 'rgba(58,58,26,0.4)', stroke: '#c8a840', text: '#f0d490' },
+  purple: { fill: 'rgba(42,26,58,0.4)', stroke: '#8040c8', text: '#c090f0' },
+  gray: { fill: 'rgba(51,51,51,0.4)', stroke: '#666', text: '#aaa' },
+};
+
 /**
  * Builds a standalone SVG document for a diagram that:
  *  1. Renders the diagram visually with a dark VS Code–like theme.
@@ -174,7 +210,23 @@ export function buildDocumentSvg(doc: DiagramDocument): string {
     maxRight = Math.max(maxRight, el.x + el.width);
     maxBottom = Math.max(maxBottom, el.y + el.height);
   }
-  if (allPositioned.length === 0) { minX = 0; minY = 0; maxRight = 400; maxBottom = 200; }
+
+  // Expand bounding box to include group containers (they extend beyond their child nodes
+  // by GROUP_PADDING on all sides and GROUP_LABEL_HEIGHT above).
+  const groupBoxes = (doc.groups ?? [])
+    .map((g) => computeGroupBox(g, doc.nodes))
+    .filter((b): b is NonNullable<typeof b> => b !== null);
+
+  for (const box of groupBoxes) {
+    minX = Math.min(minX, box.x);
+    minY = Math.min(minY, box.y);
+    maxRight = Math.max(maxRight, box.x + box.width);
+    maxBottom = Math.max(maxBottom, box.y + box.height);
+  }
+
+  if (allPositioned.length === 0 && groupBoxes.length === 0) {
+    minX = 0; minY = 0; maxRight = 400; maxBottom = 200;
+  }
 
   const vbX = minX - pad;
   const vbY = minY - pad;
@@ -183,6 +235,7 @@ export function buildDocumentSvg(doc: DiagramDocument): string {
 
   const nodeMap = new Map(doc.nodes.map((n) => [n.id, n]));
 
+  const groupSvg = buildGroupsSvgDark(doc.groups ?? [], groupBoxes);
   const edgeSvg = buildEdgesSvgDark(doc.edges, nodeMap);
   const nodeSvg = buildNodesSvgDark(doc.nodes);
   const textSvg = buildTextElementsSvg(doc.textElements ?? []);
@@ -201,11 +254,29 @@ ${metadataXml}
   <marker id="arrow-normal" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#888"/></marker>
   <marker id="arrow-open" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polyline points="0 0, 10 3.5, 0 7" fill="none" stroke="#888" stroke-width="1.5"/></marker>
 </defs>
+<g id="group-layer">${groupSvg}</g>
 <g id="edge-layer">${edgeSvg}</g>
 <g id="node-layer">${nodeSvg}</g>
 <g id="text-layer">${textSvg}</g>
 <g id="image-layer">${imageSvg}</g>
 </svg>`;
+}
+
+function buildGroupsSvgDark(
+  groups: DiagramGroup[],
+  boxes: { x: number; y: number; width: number; height: number }[],
+): string {
+  return groups.map((group, i) => {
+    const box = boxes[i];
+    if (!box) return '';
+    const colors = GROUP_FILL_COLORS[group.color ?? 'default'] ?? GROUP_FILL_COLORS.default;
+    return [
+      `<g id="group-${escapeXml(group.id)}">`,
+      `  <rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" rx="8" ry="8" fill="${colors.fill}" stroke="${colors.stroke}" stroke-width="1.5" stroke-dasharray="6,3"/>`,
+      `  <text x="${box.x + 12}" y="${box.y + GROUP_LABEL_HEIGHT - 8}" font-size="13" font-weight="bold" fill="${colors.text}">${escapeXml(group.label)}</text>`,
+      `</g>`,
+    ].join('\n');
+  }).join('\n');
 }
 
 function buildEdgesSvgDark(

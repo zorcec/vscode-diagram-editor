@@ -518,7 +518,7 @@ body {
   font-family: var(--vscode-font-family, sans-serif);
   font-size: 13px;
   cursor: grab;
-  transition: box-shadow 0.15s;
+  transition: box-shadow 0.15s, opacity 0.15s;
 }
 
 .diagram-node:active {
@@ -700,15 +700,19 @@ body {
 
 .toolbar-action-btn {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   font-size: 12px;
-  padding: 2px 4px;
+  padding: 3px 6px;
   border-radius: 3px;
+  color: var(--vscode-editor-foreground, #ccc);
+  transition: background 0.12s, border-color 0.12s;
+  line-height: 1;
 }
 
 .toolbar-action-btn:hover {
   background: var(--vscode-list-hoverBackground, #444);
+  border-color: var(--vscode-editorWidget-border, #555);
 }
 
 /* -------------------------------------------------------------------------
@@ -756,6 +760,7 @@ body {
   border-radius: 8px;
   position: relative;
   pointer-events: all;
+  transition: border-color 0.2s, background 0.2s;
 }
 
 .diagram-group--selected {
@@ -776,10 +781,12 @@ body {
   white-space: nowrap;
   user-select: none;
   cursor: pointer;
+  transition: opacity 0.15s, color 0.15s;
 }
 
 .diagram-group-label:hover {
-  opacity: 0.8;
+  opacity: 1;
+  color: var(--vscode-editor-foreground, #ccc);
 }
 
 /* Group border color variants */
@@ -845,6 +852,7 @@ body {
 .diagram-group--collapsed {
   border-style: solid;
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .diagram-group--collapsed .diagram-group-label {
@@ -852,6 +860,7 @@ body {
   transform: translateY(-50%);
   font-size: 12px;
   color: var(--vscode-editor-foreground, #ccc);
+  opacity: 0.9;
 }
 
 /* (toolbar right-alignment no longer needed – toolbar is a floating panel) */

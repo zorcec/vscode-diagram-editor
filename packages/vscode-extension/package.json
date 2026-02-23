@@ -34,7 +34,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onCustomEditor:diagramflow.editor"
+    "onCustomEditor:diagramflow.editor",
+    "onCustomEditor:diagramflow.tasks"
   ],
   "contributes": {
     "commands": [
@@ -61,6 +62,16 @@
           }
         ],
         "priority": "default"
+      },
+      {
+        "viewType": "diagramflow.tasks",
+        "displayName": "Tasks Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.tasks.md"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "languages": [
@@ -71,6 +82,15 @@
         ],
         "aliases": [
           "Diagram SVG"
+        ]
+      },
+      {
+        "id": "tasks-md",
+        "extensions": [
+          ".tasks.md"
+        ],
+        "aliases": [
+          "Tasks Markdown"
         ]
       }
     ],
@@ -430,6 +450,97 @@
                   }
                 }
               }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_getTasks",
+        "tags": ["tasks", "diagramflow", "todo"],
+        "toolReferenceName": "getTasks",
+        "displayName": "Get Tasks",
+        "modelDescription": "Returns the structured content of a .tasks.md file including all sections, tasks (with id, text, status, priority), and metadata. `filePath` is required — provide the absolute path to a .tasks.md file.",
+        "userDescription": "Read all tasks from a .tasks.md file.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(checklist)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["filePath"],
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .tasks.md file to read."
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_updateTask",
+        "tags": ["tasks", "diagramflow", "todo"],
+        "toolReferenceName": "updateTask",
+        "displayName": "Update Task",
+        "modelDescription": "Updates a task by id in a .tasks.md file. Supported fields: text, status (todo | in-progress | done), priority (low | medium | high). `filePath` and `taskId` are required.",
+        "userDescription": "Update a task's status, text, or priority in a .tasks.md file.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(check)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["filePath", "taskId"],
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .tasks.md file."
+            },
+            "taskId": {
+              "type": "string",
+              "description": "ID of the task to update."
+            },
+            "text": {
+              "type": "string",
+              "description": "New task description text."
+            },
+            "status": {
+              "type": "string",
+              "enum": ["todo", "in-progress", "done"],
+              "description": "New task status."
+            },
+            "priority": {
+              "type": "string",
+              "enum": ["low", "medium", "high"],
+              "description": "New task priority."
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_addTask",
+        "tags": ["tasks", "diagramflow", "todo"],
+        "toolReferenceName": "addTask",
+        "displayName": "Add Task",
+        "modelDescription": "Adds a new task to a named section in a .tasks.md file. `filePath`, `sectionTitle`, and `text` are required. Optionally set `priority` (low | medium | high).",
+        "userDescription": "Add a new task to a section in a .tasks.md file.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(add)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["filePath", "sectionTitle", "text"],
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .tasks.md file."
+            },
+            "sectionTitle": {
+              "type": "string",
+              "description": "Title of the section to add the task to."
+            },
+            "text": {
+              "type": "string",
+              "description": "Task description text."
+            },
+            "priority": {
+              "type": "string",
+              "enum": ["low", "medium", "high"],
+              "description": "Optional task priority."
             }
           }
         }

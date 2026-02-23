@@ -261,6 +261,7 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
             ...node.data,
             onLabelChange: graph.onNodeLabelChange,
             onUnpin: graph.onUnpinNode,
+            onRemoveFromGroup: node.parentId ? graph.onRemoveFromGroup : undefined,
           },
           style: {
             ...node.style,
@@ -268,7 +269,7 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
           },
         };
       }),
-    [graph.allNodes, graph.onNodeLabelChange, graph.onUnpinNode, graph.onToggleGroupCollapse, graph.onTextContentChange, highlightedNodeIds],
+    [graph.allNodes, graph.onNodeLabelChange, graph.onUnpinNode, graph.onRemoveFromGroup, graph.onToggleGroupCollapse, graph.onTextContentChange, highlightedNodeIds],
   );
 
   // Determine what the PropertiesPanel should display.

@@ -396,6 +396,28 @@ describe('DiagramEditorProvider', () => {
       );
     });
 
+    it('handles UPDATE_NODE_PROPS with group null (eject from group)', async () => {
+      DiagramEditorProvider.register(context, service as any);
+      const provider = vi.mocked(vscode.window.registerCustomEditorProvider)
+        .mock.calls[0][1] as any;
+      const textDoc = {
+        getText: () => JSON.stringify(makeValidDoc()),
+        uri: vscode.Uri.file('/test.diagram'),
+        lineCount: 1,
+      } as unknown as vscode.TextDocument;
+      const panel = makeMockWebviewPanel();
+      const token = { isCancellationRequested: false, onCancellationRequested: vi.fn() } as unknown as vscode.CancellationToken;
+      await provider.resolveCustomTextEditor(textDoc, panel, token);
+      const handler = vi.mocked(panel.webview.onDidReceiveMessage).mock.calls[0][0] as (msg: any) => void;
+
+      await handler({ type: 'UPDATE_NODE_PROPS', id: 'n1', changes: { group: null } });
+
+      expect(service.applySemanticOps).toHaveBeenCalledWith(
+        [{ op: 'update_node', id: 'n1', changes: { group: undefined } }],
+        textDoc,
+      );
+    });
+
     it('handles UPDATE_EDGE_PROPS message', async () => {
       DiagramEditorProvider.register(context, service as any);
       const provider = vi.mocked(vscode.window.registerCustomEditorProvider)

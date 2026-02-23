@@ -278,6 +278,36 @@ describe('applyOps - update_node', () => {
     expect(node.x).toBe(200);
     expect(node.y).toBe(200);
   });
+
+  it('should set group via update_node', () => {
+    const doc: DiagramDocument = {
+      ...makeBaseDoc(),
+      groups: [{ id: 'my-group', label: 'My Group' }],
+    };
+    const result = applyOps(
+      doc,
+      [{ op: 'update_node', id: 'n1', changes: { group: 'my-group' } }],
+      mockId,
+    );
+    expect(result.success).toBe(true);
+    expect(result.document!.nodes[0].group).toBe('my-group');
+  });
+
+  it('should remove node from group when group is set to undefined', () => {
+    const doc: DiagramDocument = {
+      ...makeBaseDoc(),
+      groups: [{ id: 'my-group', label: 'My Group' }],
+      nodes: [{ ...makeBaseDoc().nodes[0], group: 'my-group' }, makeBaseDoc().nodes[1]],
+    };
+    const result = applyOps(
+      doc,
+      [{ op: 'update_node', id: 'n1', changes: { group: undefined } }],
+      mockId,
+    );
+    expect(result.success).toBe(true);
+    // group is now undefined (node ejected from group)
+    expect(result.document!.nodes[0].group).toBeUndefined();
+  });
 });
 
 describe('applyOps - add_edge', () => {
