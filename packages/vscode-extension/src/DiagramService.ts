@@ -1,12 +1,14 @@
 import * as vscode from 'vscode';
 import * as nodeFs from 'fs';
-import type { DiagramDocument, LayoutDirection } from './types/DiagramDocument';
+import type { DiagramDocument, LayoutDirection, TextElement, ImageElement } from './types/DiagramDocument';
 import { GROUP_PADDING, GROUP_LABEL_HEIGHT } from './types/DiagramDocument';
 import type { SemanticOp } from './types/operations';
 import { applyOps, createEmptyDocument } from './lib/operations';
 import { computePartialLayout, computeFullLayout, computeForcedLayout, DEFAULT_LAYOUT_CONFIG } from './lib/layoutEngine';
 import type { LayoutConfig } from './lib/layoutEngine';
 import { generateAgentContext } from './lib/agentContext';
+import { buildDocumentSvg } from './lib/exporters';
+import { extractDiagramFromSvg } from './lib/svgMetadata';
 import { nanoid } from 'nanoid';
 
 const HISTORY_MAX = 50;
@@ -65,7 +67,13 @@ export class DiagramService {
     const target = doc ?? this.activeDocument;
     if (!target) return null;
     try {
-      return JSON.parse(target.getText()) as DiagramDocument;
+      const text = target.getText();
+      // SVG files embed the JSON inside <metadata>; extract it.
+      if (target.uri.fsPath.endsWith('.svg')) {
+        const json = extractDiagramFromSvg(text);
+        return json ? (JSON.parse(json) as DiagramDocument) : null;
+      }
+      return JSON.parse(text) as DiagramDocument;
     } catch {
       return null;
     }
@@ -321,6 +329,116 @@ export class DiagramService {
     await writeDocumentToFile(target, modified);
   }
 
+  // ---------------------------------------------------------------------------
+  // Text elements
+  // ---------------------------------------------------------------------------
+
+  async addTextElement(
+    element: Omit<TextElement, 'id'>,
+    doc?: vscode.TextDocument,
+  ): Promise<{ success: boolean; id?: string; error?: string }> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return { success: false, error: 'No active diagram document' };
+    const current = this.parseDocument(target);
+    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+
+    const modified = structuredClone(current);
+    const id = nanoid(8);
+    modified.textElements = [...(modified.textElements ?? []), { id, ...element }];
+    this.stampModified(modified);
+    this.recordHistory(current);
+    const result = await writeDocumentToFile(target, modified);
+    return result.success ? { success: true, id } : result;
+  }
+
+  async updateTextElement(
+    id: string,
+    changes: Partial<Omit<TextElement, 'id'>>,
+    doc?: vscode.TextDocument,
+  ): Promise<{ success: boolean; error?: string }> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return { success: false, error: 'No active diagram document' };
+    const current = this.parseDocument(target);
+    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+
+    const modified = structuredClone(current);
+    const el = modified.textElements?.find((e) => e.id === id);
+    if (!el) return { success: false, error: `Text element not found: ${id}` };
+
+    Object.assign(el, changes);
+    this.stampModified(modified);
+    this.recordHistory(current);
+    return writeDocumentToFile(target, modified);
+  }
+
+  async deleteTextElements(ids: string[], doc?: vscode.TextDocument): Promise<{ success: boolean; error?: string }> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return { success: false, error: 'No active diagram document' };
+    const current = this.parseDocument(target);
+    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+
+    const modified = structuredClone(current);
+    modified.textElements = (modified.textElements ?? []).filter((e) => !ids.includes(e.id));
+    this.stampModified(modified);
+    this.recordHistory(current);
+    return writeDocumentToFile(target, modified);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Image elements
+  // ---------------------------------------------------------------------------
+
+  async addImageElement(
+    element: Omit<ImageElement, 'id'>,
+    doc?: vscode.TextDocument,
+  ): Promise<{ success: boolean; id?: string; error?: string }> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return { success: false, error: 'No active diagram document' };
+    const current = this.parseDocument(target);
+    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+
+    const modified = structuredClone(current);
+    const id = nanoid(8);
+    modified.imageElements = [...(modified.imageElements ?? []), { id, ...element }];
+    this.stampModified(modified);
+    this.recordHistory(current);
+    const result = await writeDocumentToFile(target, modified);
+    return result.success ? { success: true, id } : result;
+  }
+
+  async updateImageElement(
+    id: string,
+    changes: Partial<Omit<ImageElement, 'id'>>,
+    doc?: vscode.TextDocument,
+  ): Promise<{ success: boolean; error?: string }> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return { success: false, error: 'No active diagram document' };
+    const current = this.parseDocument(target);
+    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+
+    const modified = structuredClone(current);
+    const el = modified.imageElements?.find((e) => e.id === id);
+    if (!el) return { success: false, error: `Image element not found: ${id}` };
+
+    Object.assign(el, changes);
+    this.stampModified(modified);
+    this.recordHistory(current);
+    return writeDocumentToFile(target, modified);
+  }
+
+  async deleteImageElements(ids: string[], doc?: vscode.TextDocument): Promise<{ success: boolean; error?: string }> {
+    const target = doc ?? this.activeDocument;
+    if (!target) return { success: false, error: 'No active diagram document' };
+    const current = this.parseDocument(target);
+    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+
+    const modified = structuredClone(current);
+    modified.imageElements = (modified.imageElements ?? []).filter((e) => !ids.includes(e.id));
+    this.stampModified(modified);
+    this.recordHistory(current);
+    return writeDocumentToFile(target, modified);
+  }
+
   emptyDocument(): DiagramDocument {
     return createEmptyDocument();
   }
@@ -362,7 +480,9 @@ async function writeDocumentToFile(
   target: vscode.TextDocument,
   doc: DiagramDocument,
 ): Promise<{ success: boolean; error?: string }> {
-  const newText = JSON.stringify(doc, null, 2);
+  // For .diagram.svg files write a visual SVG with the JSON embedded in <metadata>.
+  const isSvg = target.uri.fsPath.endsWith('.svg');
+  const newText = isSvg ? buildDocumentSvg(doc) : JSON.stringify(doc, null, 2);
 
   // Write directly to the filesystem using Node.js — most reliable for local files.
   // VS Code detects the change and reloads the text document buffer.

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import type { EdgeStyle, ArrowType } from '../types/DiagramDocument';
-import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
+import { openDiagramDocument, fileNameFromPath, revealDiagramInEditor } from './toolHelpers';
 
 interface AddEdgesInput {
   /** Absolute path to the .diagram file to modify. */
@@ -61,6 +61,7 @@ export class AddEdgesTool implements vscode.LanguageModelTool<AddEdgesInput> {
 
     const result = await this.diagramService.applySemanticOps(ops, opened.doc);
 
+    if (result.success) void revealDiagramInEditor(options.input.filePath);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         result.success

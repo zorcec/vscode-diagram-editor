@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
-import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
+import { openDiagramDocument, fileNameFromPath, revealDiagramInEditor } from './toolHelpers';
 
 interface RemoveEdgesInput {
   /** Absolute path to the .diagram file to modify. */
@@ -45,6 +45,7 @@ export class RemoveEdgesTool implements vscode.LanguageModelTool<RemoveEdgesInpu
 
     const result = await this.diagramService.applySemanticOps(ops, opened.doc);
 
+    if (result.success) void revealDiagramInEditor(options.input.filePath);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         result.success

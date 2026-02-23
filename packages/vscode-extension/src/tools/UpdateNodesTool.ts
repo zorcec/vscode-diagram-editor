@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import type { NodeShape, NodeColor } from '../types/DiagramDocument';
-import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
+import { openDiagramDocument, fileNameFromPath, revealDiagramInEditor } from './toolHelpers';
 
 interface UpdateNodesInput {
   /** Absolute path to the .diagram file to modify. */
@@ -61,6 +61,7 @@ export class UpdateNodesTool implements vscode.LanguageModelTool<UpdateNodesInpu
 
     const result = await this.diagramService.applySemanticOps(ops, opened.doc);
 
+    if (result.success) void revealDiagramInEditor(options.input.filePath);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         result.success

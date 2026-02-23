@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import type { EdgeStyle, ArrowType } from '../types/DiagramDocument';
-import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
+import { openDiagramDocument, fileNameFromPath, revealDiagramInEditor } from './toolHelpers';
 
 interface UpdateEdgesInput {
   /** Absolute path to the .diagram file to modify. */
@@ -63,6 +63,7 @@ export class UpdateEdgesTool implements vscode.LanguageModelTool<UpdateEdgesInpu
 
     const result = await this.diagramService.applySemanticOps(ops, opened.doc);
 
+    if (result.success) void revealDiagramInEditor(options.input.filePath);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         result.success

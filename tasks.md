@@ -1,13 +1,13 @@
-[x] analyze the code, module by module and think and challange if there are any bugs or potential problems. After that replicate with test (TDD) and fix them.
-[x] diagram sorting doesnt do anything, it is broken.
-[x] changing the sorting mode can't be done via small dropdown, but only with the bigger button that should be removed, the dropdown should be the only way to change sorting mode
-[x] when nodes are moved around, the gruping element is weirdly adjusted, resized in wrong direction, etc...
-[x] e2e tests should be run in "headless" mode or fake desktop environment
-[x] do extended online research which information can be added into the diagramm for the LLM to understand the project better. Add the ideas into ideas.md
-[x] ideas in ideas.md that are implemented,  finished or skipped should be removed.
-[x] the tool that reads the diagram has to accept a file path as an argument, required so the LLM agent always specifies which file to read
-[x] add linting with a community popular configuration, like eslint-config-airbnb, to the project and fix all linting errors, and add linting problems fixing into the agnent.md as requirement
-[x] reevaluate all the tests, if all of them are necessary, testing the right things, correctly implemented or can be simplified. Go one suite by suite. ALso add more if needed. Also evaluate the e2e tests the same way.
-[x] agent has problems editing diagram, it has to be opened in the editor. Remove that requirement, the agent should pass the file path to the tools and this way specify which diagram to edit
-[x] improve code and tests, production grade required
-[x] Check from the context how did you debug the sort write problem, and document in a new .md file
+[] groups can be collapsed and expanded by clicking on the group header. This allows you to focus on specific sections of your task list while keeping the overall structure organized.
+
+[] when i open svg with another editor, it looks cut off. Example "test-metadata.diagram.svg"
+
+[] in the editor add "view metadata" button where I can have a look into the full data that will be passed to the agent via tool. Has to be nicely formatted and human readable. MAybe virtual .json editor with formted json view, or something even more use friendly.
+
+[] generate architecture.diagramm.svg, high overview of the project. And manually make sure all works as expected, can be displayed and edited with the tools. If any problems are found, fix them and cover with tests.
+
+[] .diagramm.svg should be the only supported format, and every diagram we generate, save should be in this format and viewable as svg when opened with other editors. This way we can be sure that the metadata is always there and can be used by other tools if needed. We can also leverage svg features to embed metadata in a way that is not visible in the visual representation but can be extracted by tools.
+
+[] update Coder.md instructions to reflect the new file format and how to use the editor. Make it clear the DiagramFlow tools should be used to interact with it. Reading or editing.
+
+[] improve whole project code and tests, simplify where possible, and make sure everything is well covered with tests. This includes unit tests for the editor functionality, integration tests for the file saving and loading, and end-to-end tests to ensure the overall workflow works as expected. Code has to be clean, well-structured, and maintainable, following best practices for TypeScript and VS Code extension development, and the guidelines and checklists inside the Coder.md

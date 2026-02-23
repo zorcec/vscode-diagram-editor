@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
+import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
 
 interface GetDiagramInput {
-  /** Workspace-absolute path to the .diagram file to read. */
+  /** Absolute path to the .diagram file to read. */
   filePath: string;
 }
 
@@ -18,7 +19,7 @@ export class GetDiagramTool implements vscode.LanguageModelTool<GetDiagramInput>
     options: vscode.LanguageModelToolInvocationPrepareOptions<GetDiagramInput>,
     _token: vscode.CancellationToken,
   ) {
-    const fileName = options.input.filePath.split('/').pop() ?? options.input.filePath;
+    const fileName = fileNameFromPath(options.input.filePath);
     return { invocationMessage: `Reading diagram structure from ${fileName}...` };
   }
 
@@ -26,19 +27,14 @@ export class GetDiagramTool implements vscode.LanguageModelTool<GetDiagramInput>
     options: vscode.LanguageModelToolInvocationOptions<GetDiagramInput>,
     _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
-    const uri = vscode.Uri.file(options.input.filePath);
-    let textDoc: vscode.TextDocument;
-    try {
-      textDoc = await vscode.workspace.openTextDocument(uri);
-    } catch {
+    const opened = await openDiagramDocument(options.input.filePath);
+    if ('error' in opened) {
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          `Cannot open file: ${options.input.filePath}. Make sure the path exists and is a .diagram file.`,
-        ),
+        new vscode.LanguageModelTextPart(opened.error),
       ]);
     }
 
-    const doc = this.diagramService.parseDocument(textDoc);
+    const doc = this.diagramService.parseDocument(opened.doc);
     if (!doc) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(

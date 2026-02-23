@@ -222,8 +222,65 @@ export interface AgentContext {
    * architectural caveats the agent should consider before making changes.
    */
   insights?: string[];
+  /**
+   * Free-floating text annotations placed on the canvas.
+   * These are architectural callouts, legends, or design notes.
+   * Only non-empty content is included.
+   */
+  textAnnotations?: { content: string; href?: string }[];
+  /**
+   * Images placed on the canvas with their descriptions.
+   * Descriptions are the primary LLM-readable field; src is included for reference.
+   */
+  imageAnnotations?: { src: string; description?: string; href?: string }[];
   /** How to use the diagram tools when the extension is installed */
   usage: string;
+}
+
+/**
+ * Free-floating text annotation on the canvas.
+ * Supports rich text properties (size, color, bold, italic) and optional hyperlinks.
+ */
+export interface TextElement {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content: string;
+  /** Font size in pixels. Default: 14 */
+  fontSize?: number;
+  /** CSS colour string, e.g. "#ffffff" or "var(--vscode-editor-foreground)". Default: inherited */
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  /** Optional hyperlink URL attached to the text element. */
+  href?: string;
+  /** When true the layout engine will not reposition this element. */
+  pinned?: boolean;
+}
+
+/**
+ * Free-floating image element on the canvas.
+ * Accepts an HTTP/HTTPS URL or a base64 data-URI.
+ */
+export interface ImageElement {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Image source – URL or base64 data URI (e.g. "data:image/png;base64,..."). */
+  src: string;
+  /**
+   * Human-readable description of the image.
+   * Stored in the diagram data so AI agents can understand context without loading the image.
+   */
+  description?: string;
+  /** Optional hyperlink URL attached to the image. */
+  href?: string;
+  /** When true the layout engine will not reposition this element. */
+  pinned?: boolean;
 }
 
 export interface DiagramDocument {
@@ -231,6 +288,10 @@ export interface DiagramDocument {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
   groups?: DiagramGroup[];
+  /** Free-floating text annotations on the canvas. */
+  textElements?: TextElement[];
+  /** Free-floating image elements on the canvas. */
+  imageElements?: ImageElement[];
   viewport?: {
     x: number;
     y: number;

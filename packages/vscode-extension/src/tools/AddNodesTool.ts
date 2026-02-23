@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import type { NodeShape, NodeColor } from '../types/DiagramDocument';
-import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
+import { openDiagramDocument, fileNameFromPath, revealDiagramInEditor } from './toolHelpers';
 
 interface AddNodesInput {
   /** Absolute path to the .diagram file to modify. */
@@ -66,6 +66,7 @@ export class AddNodesTool implements vscode.LanguageModelTool<AddNodesInput> {
       ]);
     }
 
+    void revealDiagramInEditor(options.input.filePath);
     const doc = this.diagramService.parseDocument(opened.doc);
     const addedNodes = doc?.nodes.slice(-options.input.nodes.length) ?? [];
     return new vscode.LanguageModelToolResult([

@@ -2,6 +2,12 @@ import * as vscode from 'vscode';
 import { DiagramEditorProvider } from './DiagramEditorProvider';
 import { DiagramService } from './DiagramService';
 import { registerDiagramTools } from './tools';
+import { buildDocumentSvg } from './lib/exporters';
+
+/** Returns true when a file path belongs to a diagram (either format). */
+function isDiagramFile(fileName: string): boolean {
+  return fileName.endsWith('.diagram.svg') || (fileName.endsWith('.diagram') && !fileName.endsWith('.diagram.svg'));
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   const diagramService = new DiagramService();
@@ -17,20 +23,14 @@ export function activate(context: vscode.ExtensionContext): void {
       const uri = await promptForNewDiagramLocation();
       if (uri) {
         await createEmptyDiagramFile(uri, diagramService);
-        await vscode.commands.executeCommand('vscode.open', uri);
+        await vscode.commands.executeCommand('vscode.openWith', uri, DiagramEditorProvider.viewType);
       }
     }),
-    vscode.commands.registerCommand('diagramflow.exportSVG', () => {
-      vscode.commands.executeCommand('diagramflow.internal.export', 'svg');
-    }),
-    vscode.commands.registerCommand('diagramflow.exportMermaid', () => {
-      vscode.commands.executeCommand('diagramflow.internal.export', 'mermaid');
-    }),
     vscode.commands.registerCommand('diagramflow.sortNodes', () => {
-      // If no activeDocument (e.g. panel lost focus), try finding any open .diagram file.
+      // If no activeDocument (e.g. panel lost focus), try finding any open diagram file.
       if (!diagramService.getActiveDocument()) {
         const fallback = vscode.workspace.textDocuments.find(
-          (d) => d.fileName.endsWith('.diagram') && !d.isClosed,
+          (d) => isDiagramFile(d.fileName) && !d.isClosed,
         );
         if (fallback) {
           diagramService.setActiveDocument(fallback);
@@ -41,7 +41,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('diagramflow.autoLayout', () => {
       if (!diagramService.getActiveDocument()) {
         const fallback = vscode.workspace.textDocuments.find(
-          (d) => d.fileName.endsWith('.diagram') && !d.isClosed,
+          (d) => isDiagramFile(d.fileName) && !d.isClosed,
         );
         if (fallback) {
           diagramService.setActiveDocument(fallback);
@@ -58,9 +58,6 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('diagramflow.redo', () => {
       diagramService.redo();
     }),
-    vscode.commands.registerCommand('diagramflow.importSVG', () => {
-      DiagramEditorProvider.openSvgImportFlow();
-    }),
   );
 }
 
@@ -68,11 +65,14 @@ export function deactivate(): void {}
 
 async function promptForNewDiagramLocation(): Promise<vscode.Uri | undefined> {
   const uri = await vscode.window.showSaveDialog({
-    filters: { Diagram: ['diagram'] },
+    filters: {
+      'Diagram (SVG with embedded data)': ['diagram.svg'],
+      'Diagram (JSON)': ['diagram'],
+    },
     defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri
       ? vscode.Uri.joinPath(
           vscode.workspace.workspaceFolders[0].uri,
-          'untitled.diagram',
+          'untitled.diagram.svg',
         )
       : undefined,
   });
@@ -84,9 +84,8 @@ async function createEmptyDiagramFile(
   diagramService: DiagramService,
 ): Promise<void> {
   const doc = diagramService.emptyDocument();
-  const content = JSON.stringify(doc, null, 2);
-  await vscode.workspace.fs.writeFile(
-    uri,
-    new TextEncoder().encode(content),
-  );
+  // New .diagram.svg files are stored as SVG with the JSON embedded in <metadata>.
+  const isSvg = uri.fsPath.endsWith('.svg');
+  const content = isSvg ? buildDocumentSvg(doc) : JSON.stringify(doc, null, 2);
+  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content));
 }

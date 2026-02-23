@@ -406,4 +406,123 @@ describe('generateAgentContext', () => {
     const ctx = generateAgentContext(doc);
     expect(ctx.insights).toBeUndefined();
   });
+
+  // ---------------------------------------------------------------------------
+  // textAnnotations
+  // ---------------------------------------------------------------------------
+
+  it('omits textAnnotations when there are no text elements', () => {
+    const ctx = generateAgentContext(makeDoc());
+    expect(ctx.textAnnotations).toBeUndefined();
+  });
+
+  it('omits textAnnotations when textElements array is empty', () => {
+    const ctx = generateAgentContext(makeDoc({ textElements: [] }));
+    expect(ctx.textAnnotations).toBeUndefined();
+  });
+
+  it('includes text element content in textAnnotations', () => {
+    const doc = makeDoc({
+      textElements: [
+        { id: 't1', x: 0, y: 0, width: 200, height: 30, content: 'Important architectural note' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.textAnnotations).toHaveLength(1);
+    expect(ctx.textAnnotations![0].content).toBe('Important architectural note');
+    expect(ctx.textAnnotations![0].href).toBeUndefined();
+  });
+
+  it('includes href in textAnnotations when set', () => {
+    const doc = makeDoc({
+      textElements: [
+        { id: 't1', x: 0, y: 0, width: 200, height: 30, content: 'See ADR', href: 'https://example.com/adr' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.textAnnotations![0].href).toBe('https://example.com/adr');
+  });
+
+  it('skips text elements with empty or whitespace-only content', () => {
+    const doc = makeDoc({
+      textElements: [
+        { id: 't1', x: 0, y: 0, width: 200, height: 30, content: '   ' },
+        { id: 't2', x: 0, y: 50, width: 200, height: 30, content: '' },
+        { id: 't3', x: 0, y: 100, width: 200, height: 30, content: 'Visible note' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.textAnnotations).toHaveLength(1);
+    expect(ctx.textAnnotations![0].content).toBe('Visible note');
+  });
+
+  it('omits textAnnotations entirely when all text elements are whitespace-only', () => {
+    const doc = makeDoc({
+      textElements: [
+        { id: 't1', x: 0, y: 0, width: 200, height: 30, content: '   ' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.textAnnotations).toBeUndefined();
+  });
+
+  // ---------------------------------------------------------------------------
+  // imageAnnotations
+  // ---------------------------------------------------------------------------
+
+  it('omits imageAnnotations when there are no image elements', () => {
+    const ctx = generateAgentContext(makeDoc());
+    expect(ctx.imageAnnotations).toBeUndefined();
+  });
+
+  it('omits imageAnnotations when imageElements array is empty', () => {
+    const ctx = generateAgentContext(makeDoc({ imageElements: [] }));
+    expect(ctx.imageAnnotations).toBeUndefined();
+  });
+
+  it('includes image src in imageAnnotations', () => {
+    const doc = makeDoc({
+      imageElements: [
+        { id: 'i1', x: 0, y: 0, width: 300, height: 200, src: 'https://example.com/arch.png' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.imageAnnotations).toHaveLength(1);
+    expect(ctx.imageAnnotations![0].src).toBe('https://example.com/arch.png');
+    expect(ctx.imageAnnotations![0].description).toBeUndefined();
+  });
+
+  it('includes description in imageAnnotations when set', () => {
+    const doc = makeDoc({
+      imageElements: [
+        { id: 'i1', x: 0, y: 0, width: 300, height: 200, src: 'https://example.com/arch.png', description: 'Deployment topology for prod cluster' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.imageAnnotations![0].description).toBe('Deployment topology for prod cluster');
+  });
+
+  it('includes href in imageAnnotations when set', () => {
+    const doc = makeDoc({
+      imageElements: [
+        { id: 'i1', x: 0, y: 0, width: 300, height: 200, src: 'img.png', href: 'https://docs.example.com' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.imageAnnotations![0].href).toBe('https://docs.example.com');
+  });
+
+  it('includes both textAnnotations and imageAnnotations together', () => {
+    const doc = makeDoc({
+      textElements: [
+        { id: 't1', x: 0, y: 0, width: 200, height: 30, content: 'Legend: blue = external' },
+      ],
+      imageElements: [
+        { id: 'i1', x: 0, y: 100, width: 200, height: 150, src: 'arch.png', description: 'Architecture overview' },
+      ],
+    });
+    const ctx = generateAgentContext(doc);
+    expect(ctx.textAnnotations).toHaveLength(1);
+    expect(ctx.imageAnnotations).toHaveLength(1);
+  });
 });

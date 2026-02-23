@@ -2,14 +2,13 @@ import { Panel, useReactFlow } from '@xyflow/react';
 import { useState, useRef, useEffect, type ReactNode } from 'react';
 import type { LayoutDirection } from '../../types/DiagramDocument';
 
+export type ToolboxMode = 'hand' | 'node' | 'note' | 'group' | 'text' | 'image' | null;
+
 interface ToolbarProps {
-  onAddNode: () => void;
-  onAddNote: () => void;
+  toolboxMode: ToolboxMode;
+  onSetToolboxMode: (mode: ToolboxMode) => void;
   onAddGroup: () => void;
   onSortNodes: (direction: LayoutDirection) => void;
-  onExportSvg: () => void;
-  onExportPng: () => void;
-  onExportMermaid: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onToggleSearch: () => void;
@@ -68,13 +67,10 @@ function useDropdown() {
 }
 
 export function Toolbar({
-  onAddNode,
-  onAddNote,
+  toolboxMode,
+  onSetToolboxMode,
   onAddGroup,
   onSortNodes,
-  onExportSvg,
-  onExportPng,
-  onExportMermaid,
   onUndo,
   onRedo,
   onToggleSearch,
@@ -85,7 +81,10 @@ export function Toolbar({
 }: ToolbarProps) {
   const { fitView } = useReactFlow();
   const sortDropdown = useDropdown();
-  const exportDropdown = useDropdown();
+
+  const toggleMode = (mode: ToolboxMode) => {
+    onSetToolboxMode(toolboxMode === mode ? null : mode);
+  };
 
   const sortLabel = selectedGroupId ? 'Sort In' : 'Sort';
   const sortTitle = selectedGroupId
@@ -94,19 +93,56 @@ export function Toolbar({
 
   return (
     <Panel position="top-left" className="toolbox" data-testid="toolbar">
-      {/* Create */}
-      <ToolSection label="Create">
-        <button onClick={onAddNode} title="Add Node (N)" data-testid="btn-add-node" className="toolbox-btn">
+      {/* Tools */}
+      <ToolSection label="Tools">
+        <button
+          onClick={() => toggleMode('hand')}
+          title="Hand Tool (Esc)"
+          data-testid="btn-hand"
+          className={`toolbox-btn${toolboxMode === 'hand' || toolboxMode === null ? ' toolbox-btn--active' : ''}`}
+        >
+          <span className="toolbox-btn-icon">✋</span>
+          <span className="toolbox-btn-label">Hand</span>
+        </button>
+        <button
+          onClick={() => toggleMode('node')}
+          title="Place Node (N)"
+          data-testid="btn-add-node"
+          className={`toolbox-btn${toolboxMode === 'node' ? ' toolbox-btn--active' : ''}`}
+        >
           <span className="toolbox-btn-icon">＋</span>
           <span className="toolbox-btn-label">Node</span>
         </button>
-        <button onClick={onAddNote} title="Add Sticky Note" data-testid="btn-add-note" className="toolbox-btn">
+        <button
+          onClick={() => toggleMode('note')}
+          title="Place Sticky Note"
+          data-testid="btn-add-note"
+          className={`toolbox-btn${toolboxMode === 'note' ? ' toolbox-btn--active' : ''}`}
+        >
           <span className="toolbox-btn-icon">📝</span>
           <span className="toolbox-btn-label">Note</span>
         </button>
         <button onClick={onAddGroup} title="Add Group (G)" data-testid="btn-add-group" className="toolbox-btn">
           <span className="toolbox-btn-icon">⬡</span>
           <span className="toolbox-btn-label">Group</span>
+        </button>
+        <button
+          onClick={() => toggleMode('text')}
+          title="Place Text Annotation"
+          data-testid="btn-add-text"
+          className={`toolbox-btn${toolboxMode === 'text' ? ' toolbox-btn--active' : ''}`}
+        >
+          <span className="toolbox-btn-icon">T</span>
+          <span className="toolbox-btn-label">Text</span>
+        </button>
+        <button
+          onClick={() => toggleMode('image')}
+          title="Place Image"
+          data-testid="btn-add-image"
+          className={`toolbox-btn${toolboxMode === 'image' ? ' toolbox-btn--active' : ''}`}
+        >
+          <span className="toolbox-btn-icon">🖼</span>
+          <span className="toolbox-btn-label">Image</span>
         </button>
       </ToolSection>
 
@@ -171,49 +207,6 @@ export function Toolbar({
           <span className="toolbox-btn-icon">⊞</span>
           <span className="toolbox-btn-label">Fit</span>
         </button>
-      </ToolSection>
-
-      <div className="toolbox-divider" />
-
-      {/* Export */}
-      <ToolSection label="Export">
-        <div className="toolbox-split-btn" ref={exportDropdown.ref}>
-          <button
-            onClick={onExportSvg}
-            title="Save as SVG"
-            data-testid="btn-save-svg"
-            className="toolbox-btn toolbox-split-btn-main"
-          >
-            <span className="toolbox-btn-icon">↓</span>
-            <span className="toolbox-btn-label">SVG</span>
-          </button>
-          <button
-            onClick={() => exportDropdown.setOpen(!exportDropdown.open)}
-            title="More export formats"
-            data-testid="btn-export-more"
-            className="toolbox-split-btn-toggle"
-          >
-            <span className="toolbox-split-btn-arrow">▾</span>
-          </button>
-          {exportDropdown.open && (
-            <div className="toolbox-dropdown" data-testid="export-dropdown">
-              <button
-                className="toolbox-dropdown-item"
-                data-testid="btn-save-png"
-                onClick={() => { onExportPng(); exportDropdown.setOpen(false); }}
-              >
-                PNG
-              </button>
-              <button
-                className="toolbox-dropdown-item"
-                data-testid="btn-export-mermaid"
-                onClick={() => { onExportMermaid(); exportDropdown.setOpen(false); }}
-              >
-                Mermaid
-              </button>
-            </div>
-          )}
-        </div>
       </ToolSection>
 
       <div className="toolbox-divider" />

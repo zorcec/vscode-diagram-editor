@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -9,17 +9,25 @@ import {
   ConnectionMode,
   useReactFlow,
 } from '@xyflow/react';
+import type { Node as RFNode } from '@xyflow/react';
 import { DiagramNode } from './DiagramNode';
 import { DiagramEdge } from './DiagramEdge';
 import { DiagramGroupNode } from './DiagramGroupNode';
-import { Toolbar } from './Toolbar';
+import { TextElementNode } from './TextElementNode';
+import { ImageElementNode } from './ImageElementNode';
+import { Toolbar, type ToolboxMode } from './Toolbar';
 import { PropertiesPanel } from './PropertiesPanel';
 import { SearchBar } from './SearchBar';
 import { ShortcutsPanel } from './ShortcutsPanel';
 import { PanningHint } from './PanningHint';
 import type { GraphState } from '../hooks/useGraphState';
 
-const nodeTypes = { diagramNode: DiagramNode, diagramGroup: DiagramGroupNode };
+const nodeTypes = {
+  diagramNode: DiagramNode,
+  diagramGroup: DiagramGroupNode,
+  textElementNode: TextElementNode,
+  imageElementNode: ImageElementNode,
+};
 const edgeTypes = { diagramEdge: DiagramEdge };
 
 const MINIMAP_NODE_COLORS: Record<string, string> = {
@@ -37,9 +45,11 @@ interface CanvasPanelProps {
 
 /** Inner component that has access to the ReactFlow instance. */
 function CanvasPanelInner({ graph }: CanvasPanelProps) {
-  const { fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
   const [showSearch, setShowSearch] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [toolboxMode, setToolboxMode] = useState<ToolboxMode>(null);
+  const pendingImageDataRef = useRef<{ src: string; description?: string } | null>(null);
 
   // Fit view whenever a layout request completes.
   useEffect(() => {
@@ -52,6 +62,89 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
       return () => cancelAnimationFrame(id);
     }
   }, [graph.layoutPending, fitView, graph.onFitViewDone]);
+
+  // Handle toolbox mode changes — when image tool is selected, prompt for URL immediately.
+  const handleSetToolboxMode = useCallback((mode: ToolboxMode) => {
+    if (mode === 'image') {
+      const src = window.prompt('Image URL or data URI:');
+      if (!src?.trim()) return;
+      const description = window.prompt('Description (optional):') ?? undefined;
+      pendingImageDataRef.current = { src: src.trim(), description: description?.trim() || undefined };
+      setToolboxMode('image');
+    } else {
+      pendingImageDataRef.current = null;
+      setToolboxMode(mode);
+    }
+  }, []);
+
+  // Place an element when clicking on empty canvas area while a tool is selected.
+  const handlePaneClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (!toolboxMode || toolboxMode === 'hand') return;
+      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      switch (toolboxMode) {
+        case 'node':
+          graph.onAddNodeAt(position.x, position.y);
+          break;
+        case 'note':
+          graph.onAddNoteAt(position.x, position.y);
+          break;
+        case 'text':
+          graph.onAddTextAt(position.x, position.y);
+          break;
+        case 'image': {
+          const imgData = pendingImageDataRef.current;
+          if (imgData) {
+            graph.onAddImageAt(position.x, position.y, imgData.src, imgData.description);
+          }
+          break;
+        }
+        case 'group':
+          graph.onAddGroup();
+          break;
+      }
+      setToolboxMode(null);
+      pendingImageDataRef.current = null;
+    },
+    [toolboxMode, screenToFlowPosition, graph],
+  );
+
+  // When tool is active and user clicks a node: if it's a group, place inside; otherwise select and cancel.
+  const handleNodeClick = useCallback(
+    (_event: React.MouseEvent, node: RFNode) => {
+      if (!toolboxMode || toolboxMode === 'hand') return;
+      if (node.type === 'diagramGroup') {
+        const position = screenToFlowPosition({ x: _event.clientX, y: _event.clientY });
+        switch (toolboxMode) {
+          case 'node':
+            graph.onAddNodeAt(position.x, position.y, node.id);
+            break;
+          case 'note':
+            graph.onAddNoteAt(position.x, position.y);
+            break;
+          case 'text':
+            graph.onAddTextAt(position.x, position.y);
+            break;
+          case 'image': {
+            const imgData = pendingImageDataRef.current;
+            if (imgData) {
+              graph.onAddImageAt(position.x, position.y, imgData.src, imgData.description);
+            }
+            break;
+          }
+          default:
+            break;
+        }
+        setToolboxMode(null);
+        pendingImageDataRef.current = null;
+      } else {
+        // Clicked on non-group element — cancel tool and let default selection happen.
+        setToolboxMode(null);
+        pendingImageDataRef.current = null;
+      }
+    },
+    [toolboxMode, screenToFlowPosition, graph],
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -88,7 +181,7 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
 
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
-        graph.onAddNode();
+        handleSetToolboxMode(toolboxMode === 'node' ? null : 'node');
       } else if (e.key === 'g' || e.key === 'G') {
         e.preventDefault();
         graph.onAddGroup();
@@ -106,11 +199,16 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
         e.preventDefault();
         setShowShortcuts((v) => !v);
       } else if (e.key === 'Escape') {
-        setShowSearch(false);
-        setShowShortcuts(false);
+        if (toolboxMode) {
+          setToolboxMode(null);
+          pendingImageDataRef.current = null;
+        } else {
+          setShowSearch(false);
+          setShowShortcuts(false);
+        }
       }
     },
-    [graph, fitView],
+    [graph, fitView, toolboxMode, handleSetToolboxMode],
   );
 
   useEffect(() => {
@@ -143,6 +241,18 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
             },
           };
         }
+        if (node.type === 'textElementNode') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onContentChange: graph.onTextContentChange,
+            },
+          };
+        }
+        if (node.type === 'imageElementNode') {
+          return { ...node };
+        }
         const highlighted =
           highlightedNodeIds !== null && !highlightedNodeIds.has(node.id);
         return {
@@ -158,7 +268,7 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
           },
         };
       }),
-    [graph.allNodes, graph.onNodeLabelChange, graph.onUnpinNode, graph.onToggleGroupCollapse, highlightedNodeIds],
+    [graph.allNodes, graph.onNodeLabelChange, graph.onUnpinNode, graph.onToggleGroupCollapse, graph.onTextContentChange, highlightedNodeIds],
   );
 
   // Determine what the PropertiesPanel should display.
@@ -186,27 +296,51 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
         return { kind: 'edge' as const, edge, onUpdateEdge: graph.onUpdateEdgeProps };
       }
     }
+    if (graph.selectedTextElementId) {
+      const textNode = graph.allNodes.find((n) => n.id === `text-${graph.selectedTextElementId}`);
+      if (textNode) {
+        return {
+          kind: 'textElement' as const,
+          element: textNode.data as Record<string, unknown>,
+          id: graph.selectedTextElementId,
+          onUpdateTextElement: graph.onUpdateTextElementProps,
+        };
+      }
+    }
+    if (graph.selectedImageElementId) {
+      const imageNode = graph.allNodes.find((n) => n.id === `image-${graph.selectedImageElementId}`);
+      if (imageNode) {
+        return {
+          kind: 'imageElement' as const,
+          element: imageNode.data as Record<string, unknown>,
+          id: graph.selectedImageElementId,
+          onUpdateImageElement: graph.onUpdateImageElementProps,
+        };
+      }
+    }
     return { kind: 'none' as const };
   }, [
     graph.selectedGroupId,
     graph.selectedNodeId,
     graph.selectedEdgeId,
+    graph.selectedTextElementId,
+    graph.selectedImageElementId,
     graph.groups,
     graph.nodes,
     graph.edges,
+    graph.allNodes,
     graph.onUpdateNodeProps,
     graph.onUpdateEdgeProps,
     graph.onUpdateGroupProps,
+    graph.onUpdateTextElementProps,
+    graph.onUpdateImageElementProps,
   ]);
 
   const toolbarProps = {
-    onAddNode: graph.onAddNode,
-    onAddNote: graph.onAddNote,
+    toolboxMode,
+    onSetToolboxMode: handleSetToolboxMode,
     onAddGroup: graph.onAddGroup,
     onSortNodes: graph.onSortNodes,
-    onExportSvg: graph.onExportSvg,
-    onExportPng: graph.onExportPng,
-    onExportMermaid: graph.onExportMermaid,
     onUndo: graph.onUndo,
     onRedo: graph.onRedo,
     onToggleSearch: () => setShowSearch((v) => !v),
@@ -216,8 +350,10 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
     selectedGroupId: graph.selectedGroupId,
   };
 
+  const isPlacingMode = toolboxMode && toolboxMode !== 'hand';
+
   return (
-    <div className="canvas-container" data-testid="canvas-container">
+    <div className={`canvas-container${isPlacingMode ? ' canvas-container--placing' : ''}`} data-testid="canvas-container">
       {showSearch && (
         <SearchBar
           query={graph.searchQuery}
@@ -244,6 +380,8 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
           onNodesDelete={graph.onNodesDelete}
           onEdgesDelete={graph.onEdgesDelete}
           onSelectionChange={graph.onSelectionChange}
+          onPaneClick={handlePaneClick}
+          onNodeClick={handleNodeClick}
           connectionMode={ConnectionMode.Loose}
           fitView
           defaultEdgeOptions={{ type: 'diagramEdge' }}

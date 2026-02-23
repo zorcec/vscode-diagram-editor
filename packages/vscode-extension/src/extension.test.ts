@@ -4,6 +4,7 @@ vi.mock('vscode', () => import('./__mocks__/vscode'));
 vi.mock('./DiagramEditorProvider', () => ({
   DiagramEditorProvider: {
     register: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+    viewType: 'diagramflow.editor',
   },
 }));
 vi.mock('./DiagramService', () => ({
@@ -58,22 +59,19 @@ describe('extension', () => {
       expect(registerDiagramTools).toHaveBeenCalledTimes(1);
     });
 
-    it('registers 9 commands', () => {
+    it('registers 6 commands', () => {
       activate(context);
-      expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(9);
+      expect(vscode.commands.registerCommand).toHaveBeenCalledTimes(6);
 
       const commandNames = vi
         .mocked(vscode.commands.registerCommand)
         .mock.calls.map((c) => c[0]);
       expect(commandNames).toContain('diagramflow.newDiagram');
-      expect(commandNames).toContain('diagramflow.exportSVG');
-      expect(commandNames).toContain('diagramflow.exportMermaid');
       expect(commandNames).toContain('diagramflow.autoLayout');
       expect(commandNames).toContain('diagramflow.autoLayoutForce');
       expect(commandNames).toContain('diagramflow.sortNodes');
       expect(commandNames).toContain('diagramflow.undo');
       expect(commandNames).toContain('diagramflow.redo');
-      expect(commandNames).toContain('diagramflow.importSVG');
     });
 
     it('pushes subscriptions to context', () => {
@@ -94,32 +92,6 @@ describe('extension', () => {
       const match = calls.find((c) => c[0] === commandId);
       return match?.[1] as ((...args: any[]) => any) | undefined;
     }
-
-    it('exportSVG command calls internal export with svg', async () => {
-      activate(context);
-      const cb = getCommandCallback('diagramflow.exportSVG');
-      expect(cb).toBeDefined();
-
-      await cb!();
-
-      expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-        'diagramflow.internal.export',
-        'svg',
-      );
-    });
-
-    it('exportMermaid command calls internal export with mermaid', async () => {
-      activate(context);
-      const cb = getCommandCallback('diagramflow.exportMermaid');
-      expect(cb).toBeDefined();
-
-      await cb!();
-
-      expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-        'diagramflow.internal.export',
-        'mermaid',
-      );
-    });
 
     it('autoLayout command calls diagramService.autoLayoutAll', async () => {
       activate(context);
@@ -146,8 +118,9 @@ describe('extension', () => {
       expect(vscode.window.showSaveDialog).toHaveBeenCalled();
       expect(vscode.workspace.fs.writeFile).toHaveBeenCalled();
       expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-        'vscode.open',
+        'vscode.openWith',
         saveUri,
+        'diagramflow.editor',
       );
     });
 

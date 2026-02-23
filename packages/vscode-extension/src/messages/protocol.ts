@@ -1,4 +1,4 @@
-import type { DiagramDocument, NodeShape, NodeColor, EdgeStyle, ArrowType, LayoutDirection } from '../types/DiagramDocument';
+import type { DiagramDocument, NodeShape, NodeColor, EdgeStyle, ArrowType, LayoutDirection, NodeType, SecurityClassification, DeploymentEnvironment, NodeProperties } from '../types/DiagramDocument';
 
 export type WebviewMessage =
   | { type: 'WEBVIEW_READY' }
@@ -23,7 +23,7 @@ export type WebviewMessage =
     }
   | {
       type: 'ADD_NODE';
-      node: { label: string; shape?: NodeShape; color?: NodeColor; notes?: string };
+      node: { label: string; shape?: NodeShape; color?: NodeColor; notes?: string; x?: number; y?: number; group?: string; pinned?: boolean };
     }
   | {
       type: 'ADD_NODES';
@@ -56,6 +56,11 @@ export type WebviewMessage =
         notes?: string;
         group?: string | null;
         pinned?: boolean;
+        type?: NodeType;
+        tags?: string[];
+        properties?: NodeProperties;
+        securityClassification?: SecurityClassification;
+        deploymentEnvironment?: DeploymentEnvironment;
       };
     }
   | {
@@ -66,6 +71,8 @@ export type WebviewMessage =
         style?: EdgeStyle;
         arrow?: ArrowType;
         animated?: boolean;
+        protocol?: string;
+        dataTypes?: string[];
       };
     }
   | {
@@ -101,7 +108,93 @@ export type WebviewMessage =
       /** SVG string (for 'svg') or base64-encoded PNG (for 'png') or Mermaid text (for 'mermaid') */
       data: string;
     }
-  | { type: 'OPEN_SVG_REQUEST' };
+  | { type: 'OPEN_SVG_REQUEST' }
+  // -------------------------------------------------------------------------
+  // Text elements
+  // -------------------------------------------------------------------------
+  | {
+      type: 'ADD_TEXT_ELEMENT';
+      element: {
+        content: string;
+        x?: number;
+        y?: number;
+        width?: number;
+        height?: number;
+        fontSize?: number;
+        color?: string;
+        bold?: boolean;
+        italic?: boolean;
+        href?: string;
+      };
+    }
+  | {
+      type: 'UPDATE_TEXT_ELEMENT';
+      id: string;
+      changes: {
+        content?: string;
+        x?: number;
+        y?: number;
+        width?: number;
+        height?: number;
+        fontSize?: number;
+        color?: string;
+        bold?: boolean;
+        italic?: boolean;
+        href?: string;
+        pinned?: boolean;
+      };
+    }
+  | { type: 'DELETE_TEXT_ELEMENTS'; elementIds: string[] }
+  | {
+      type: 'TEXT_ELEMENT_MOVED';
+      id: string;
+      position: { x: number; y: number };
+    }
+  | {
+      type: 'TEXT_ELEMENT_RESIZED';
+      id: string;
+      dimensions: { width: number; height: number };
+    }
+  // -------------------------------------------------------------------------
+  // Image elements
+  // -------------------------------------------------------------------------
+  | {
+      type: 'ADD_IMAGE_ELEMENT';
+      element: {
+        src: string;
+        description?: string;
+        x?: number;
+        y?: number;
+        width?: number;
+        height?: number;
+        href?: string;
+      };
+    }
+  | {
+      type: 'UPDATE_IMAGE_ELEMENT';
+      id: string;
+      changes: {
+        src?: string;
+        description?: string;
+        x?: number;
+        y?: number;
+        width?: number;
+        height?: number;
+        href?: string;
+        pinned?: boolean;
+      };
+    }
+  | { type: 'DELETE_IMAGE_ELEMENTS'; elementIds: string[] }
+  | {
+      type: 'IMAGE_ELEMENT_MOVED';
+      id: string;
+      position: { x: number; y: number };
+    }
+  | {
+      type: 'IMAGE_ELEMENT_RESIZED';
+      id: string;
+      dimensions: { width: number; height: number };
+    };
 
 export type ExtensionMessage =
   | { type: 'DOCUMENT_UPDATED'; doc: DiagramDocument }

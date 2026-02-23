@@ -94,6 +94,20 @@ body {
   margin: 0 0 4px 0;
 }
 
+.properties-panel__subtitle {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vscode-descriptionForeground, #888);
+  margin: 0 0 4px 0;
+}
+
+.prop-divider {
+  border-top: 1px solid var(--vscode-editorWidget-border, #454545);
+  margin: 4px 0;
+}
+
 .prop-group {
   display: flex;
   flex-direction: column;
@@ -244,6 +258,10 @@ body {
   overflow: hidden;
 }
 
+.canvas-container--placing .react-flow__pane {
+  cursor: crosshair;
+}
+
 /* -------------------------------------------------------------------------
    Toolbox — left-side floating vertical panel overlaid on the canvas
    ---------------------------------------------------------------------- */
@@ -322,6 +340,17 @@ body {
 
 .toolbox-btn:active {
   opacity: 0.75;
+}
+
+.toolbox-btn--active {
+  background: var(--vscode-list-activeSelectionBackground, #094771);
+  border-color: var(--vscode-focusBorder, #007fd4);
+  color: var(--vscode-list-activeSelectionForeground, #fff);
+}
+
+.toolbox-btn--active:hover {
+  background: var(--vscode-list-activeSelectionBackground, #094771);
+  border-color: var(--vscode-focusBorder, #007fd4);
 }
 
 .toolbox-btn-icon {

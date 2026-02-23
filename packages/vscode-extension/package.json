@@ -43,24 +43,12 @@
         "title": "DiagramFlow: New Diagram"
       },
       {
-        "command": "diagramflow.exportSVG",
-        "title": "DiagramFlow: Export as SVG"
-      },
-      {
-        "command": "diagramflow.exportMermaid",
-        "title": "DiagramFlow: Export as Mermaid"
-      },
-      {
         "command": "diagramflow.autoLayout",
         "title": "DiagramFlow: Auto Layout"
       },
       {
         "command": "diagramflow.sortNodes",
         "title": "DiagramFlow: Sort Nodes"
-      },
-      {
-        "command": "diagramflow.importSVG",
-        "title": "DiagramFlow: Import SVG"
       }
     ],
     "customEditors": [
@@ -68,6 +56,9 @@
         "viewType": "diagramflow.editor",
         "displayName": "Diagram Editor",
         "selector": [
+          {
+            "filenamePattern": "*.diagram.svg"
+          },
           {
             "filenamePattern": "*.diagram"
           }
@@ -84,9 +75,42 @@
         "aliases": [
           "Diagram"
         ]
+      },
+      {
+        "id": "diagram-svg",
+        "extensions": [
+          ".diagram.svg"
+        ],
+        "aliases": [
+          "Diagram SVG"
+        ]
       }
     ],
     "languageModelTools": [
+      {
+        "name": "diagramflow_readDiagram",
+        "tags": [
+          "diagram",
+          "diagramflow",
+          "visualization"
+        ],
+        "toolReferenceName": "readDiagram",
+        "displayName": "Read Diagram",
+        "modelDescription": "Reads a .diagram file and returns a plain-text architecture description optimised for LLM comprehension. No coordinates or opaque IDs — just semantic content. Use this to understand and reason about a diagram. Use diagramflow_getDiagram when you need IDs to update the diagram. `filePath` is required — always specify the absolute path to the .diagram file.",
+        "userDescription": "Read a diagram's architecture as human-readable text.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(book)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["filePath"],
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to read."
+            }
+          }
+        }
+      },
       {
         "name": "diagramflow_getDiagram",
         "tags": [
@@ -96,13 +120,19 @@
         ],
         "toolReferenceName": "getDiagram",
         "displayName": "Get Diagram",
-        "modelDescription": "Reads the currently open .diagram file and returns its full JSON representation including all nodes (with id, label, shape, color, position, pinned status), edges (with id, source, target, label, style), and groups. Use this to understand the current state of a diagram before making modifications.",
-        "userDescription": "Read the current diagram's nodes, edges, and layout.",
+        "modelDescription": "Reads a .diagram file and returns its full JSON representation including all nodes (with id, label, shape, color, position, pinned status), edges (with id, source, target, label, style), and groups. Use this to understand the current state of a diagram before making modifications. `filePath` is required — always specify the absolute path to the .diagram file.",
+        "userDescription": "Read a diagram's nodes, edges, and layout.",
         "canBeReferencedInPrompt": true,
         "icon": "$(eye)",
         "inputSchema": {
           "type": "object",
-          "properties": {}
+          "required": ["filePath"],
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to read."
+            }
+          }
         }
       },
       {
@@ -113,54 +143,35 @@
         ],
         "toolReferenceName": "addNodes",
         "displayName": "Add Diagram Nodes",
-        "modelDescription": "Adds one or more nodes to the currently open .diagram file. Each node requires a label and optionally accepts shape, color, and notes. Nodes are auto-positioned by the layout engine. Do NOT specify x, y, or id.",
+        "modelDescription": "Adds one or more nodes to the .diagram file at `filePath`. Each node requires a label and optionally accepts shape, color, notes, and group. Nodes are auto-positioned by the layout engine — do NOT specify x, y, or id. If the diagram is open in the editor, changes appear in real time. `filePath` is required.",
         "userDescription": "Add new nodes to the diagram.",
         "canBeReferencedInPrompt": true,
         "icon": "$(add)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "nodes"
-          ],
+          "required": ["filePath", "nodes"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "nodes": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": [
-                  "label"
-                ],
+                "required": ["label"],
                 "properties": {
-                  "label": {
-                    "type": "string"
-                  },
+                  "label": { "type": "string" },
                   "shape": {
                     "type": "string",
-                    "enum": [
-                      "rectangle",
-                      "rounded",
-                      "diamond",
-                      "cylinder"
-                    ]
+                    "enum": ["rectangle", "rounded", "diamond", "cylinder"]
                   },
                   "color": {
                     "type": "string",
-                    "enum": [
-                      "default",
-                      "blue",
-                      "green",
-                      "red",
-                      "yellow",
-                      "purple",
-                      "gray"
-                    ]
+                    "enum": ["default", "blue", "green", "red", "yellow", "purple", "gray"]
                   },
-                  "notes": {
-                    "type": "string"
-                  },
-                  "group": {
-                    "type": "string"
-                  }
+                  "notes": { "type": "string" },
+                  "group": { "type": "string" }
                 }
               }
             }
@@ -169,90 +180,63 @@
       },
       {
         "name": "diagramflow_removeNodes",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "removeNodes",
         "displayName": "Remove Diagram Nodes",
-        "modelDescription": "Removes one or more nodes from the currently open .diagram file by their ids. Also removes all connected edges. Use getDiagram first to find node ids.",
+        "modelDescription": "Removes one or more nodes from the .diagram file at `filePath` by their ids. Also removes all connected edges. Use diagramflow_getDiagram first to find node ids. `filePath` is required.",
         "userDescription": "Remove nodes from the diagram by id.",
         "canBeReferencedInPrompt": true,
         "icon": "$(trash)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "nodeIds"
-          ],
+          "required": ["filePath", "nodeIds"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "nodeIds": {
               "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "items": { "type": "string" }
             }
           }
         }
       },
       {
         "name": "diagramflow_updateNodes",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "updateNodes",
         "displayName": "Update Diagram Nodes",
-        "modelDescription": "Updates properties of existing nodes. Each update requires the node id. Updatable: label, shape, color, notes, group. Position changes only apply to unpinned nodes.",
+        "modelDescription": "Updates properties of existing nodes in the .diagram file at `filePath`. Each update requires the node id. Updatable: label, shape, color, notes, group. `filePath` is required.",
         "userDescription": "Update properties of existing diagram nodes.",
         "canBeReferencedInPrompt": true,
         "icon": "$(edit)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "updates"
-          ],
+          "required": ["filePath", "updates"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "updates": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
+                  "id": { "type": "string" },
+                  "label": { "type": "string" },
                   "shape": {
                     "type": "string",
-                    "enum": [
-                      "rectangle",
-                      "rounded",
-                      "diamond",
-                      "cylinder"
-                    ]
+                    "enum": ["rectangle", "rounded", "diamond", "cylinder"]
                   },
                   "color": {
                     "type": "string",
-                    "enum": [
-                      "default",
-                      "blue",
-                      "green",
-                      "red",
-                      "yellow",
-                      "purple",
-                      "gray"
-                    ]
+                    "enum": ["default", "blue", "green", "red", "yellow", "purple", "gray"]
                   },
-                  "notes": {
-                    "type": "string"
-                  },
-                  "group": {
-                    "type": "string"
-                  }
+                  "notes": { "type": "string" },
+                  "group": { "type": "string" }
                 }
               }
             }
@@ -261,59 +245,39 @@
       },
       {
         "name": "diagramflow_addEdges",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "addEdges",
         "displayName": "Add Diagram Edges",
-        "modelDescription": "Adds edges between existing nodes. Each edge requires source and target node ids. Optional: label, style, arrow, animated.",
+        "modelDescription": "Adds edges between existing nodes in the .diagram file at `filePath`. Each edge requires source and target node ids. Optional: label, style, arrow, animated. `filePath` is required.",
         "userDescription": "Add edges between diagram nodes.",
         "canBeReferencedInPrompt": true,
         "icon": "$(git-merge)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "edges"
-          ],
+          "required": ["filePath", "edges"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "edges": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": [
-                  "source",
-                  "target"
-                ],
+                "required": ["source", "target"],
                 "properties": {
-                  "source": {
-                    "type": "string"
-                  },
-                  "target": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
+                  "source": { "type": "string" },
+                  "target": { "type": "string" },
+                  "label": { "type": "string" },
                   "style": {
                     "type": "string",
-                    "enum": [
-                      "solid",
-                      "dashed",
-                      "dotted"
-                    ]
+                    "enum": ["solid", "dashed", "dotted"]
                   },
                   "arrow": {
                     "type": "string",
-                    "enum": [
-                      "arrow",
-                      "open",
-                      "none"
-                    ]
+                    "enum": ["arrow", "open", "none"]
                   },
-                  "animated": {
-                    "type": "boolean"
-                  }
+                  "animated": { "type": "boolean" }
                 }
               }
             }
@@ -322,88 +286,64 @@
       },
       {
         "name": "diagramflow_removeEdges",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "removeEdges",
         "displayName": "Remove Diagram Edges",
-        "modelDescription": "Removes edges by their ids. Use getDiagram first to find edge ids.",
+        "modelDescription": "Removes edges by their ids from the .diagram file at `filePath`. Use diagramflow_getDiagram first to find edge ids. `filePath` is required.",
         "userDescription": "Remove edges from the diagram by id.",
         "canBeReferencedInPrompt": true,
         "icon": "$(trash)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "edgeIds"
-          ],
+          "required": ["filePath", "edgeIds"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "edgeIds": {
               "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "items": { "type": "string" }
             }
           }
         }
       },
       {
         "name": "diagramflow_updateEdges",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "updateEdges",
         "displayName": "Update Diagram Edges",
-        "modelDescription": "Updates properties of existing edges. Each update requires the edge id. Updatable: label, style, arrow, animated, source, target.",
+        "modelDescription": "Updates properties of existing edges in the .diagram file at `filePath`. Each update requires the edge id. Updatable: label, style, arrow, animated, source, target. `filePath` is required.",
         "userDescription": "Update properties of existing diagram edges.",
         "canBeReferencedInPrompt": true,
         "icon": "$(edit)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "updates"
-          ],
+          "required": ["filePath", "updates"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "updates": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
+                  "id": { "type": "string" },
+                  "label": { "type": "string" },
                   "style": {
                     "type": "string",
-                    "enum": [
-                      "solid",
-                      "dashed",
-                      "dotted"
-                    ]
+                    "enum": ["solid", "dashed", "dotted"]
                   },
                   "arrow": {
                     "type": "string",
-                    "enum": [
-                      "arrow",
-                      "open",
-                      "none"
-                    ]
+                    "enum": ["arrow", "open", "none"]
                   },
-                  "animated": {
-                    "type": "boolean"
-                  },
-                  "source": {
-                    "type": "string"
-                  },
-                  "target": {
-                    "type": "string"
-                  }
+                  "animated": { "type": "boolean" },
+                  "source": { "type": "string" },
+                  "target": { "type": "string" }
                 }
               }
             }
@@ -412,29 +352,26 @@
       },
       {
         "name": "diagramflow_addGroups",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "addGroups",
         "displayName": "Add Diagram Groups",
-        "modelDescription": "Adds one or more groups to the currently open .diagram file. Groups are visual containers that organise related nodes. Each group requires a label and optionally accepts color. After adding a group, assign nodes to it by updating their group field with diagramflow_updateNodes.",
+        "modelDescription": "Adds one or more groups to the .diagram file at `filePath`. Groups are visual containers that organise related nodes. Each group requires a label and optionally accepts color. After adding a group, assign nodes to it by updating their group field with diagramflow_updateNodes. `filePath` is required.",
         "userDescription": "Add groups to the diagram to organise nodes visually.",
         "canBeReferencedInPrompt": true,
         "icon": "$(symbol-namespace)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "groups"
-          ],
+          "required": ["filePath", "groups"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "groups": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": [
-                  "label"
-                ],
+                "required": ["label"],
                 "properties": {
                   "label": {
                     "type": "string",
@@ -442,15 +379,7 @@
                   },
                   "color": {
                     "type": "string",
-                    "enum": [
-                      "default",
-                      "blue",
-                      "green",
-                      "red",
-                      "yellow",
-                      "purple",
-                      "gray"
-                    ]
+                    "enum": ["default", "blue", "green", "red", "yellow", "purple", "gray"]
                   }
                 }
               }
@@ -460,74 +389,56 @@
       },
       {
         "name": "diagramflow_removeGroups",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "removeGroups",
         "displayName": "Remove Diagram Groups",
-        "modelDescription": "Removes one or more groups from the currently open .diagram file by their IDs. Child nodes are retained but detached from the group.",
+        "modelDescription": "Removes one or more groups from the .diagram file at `filePath` by their IDs. Child nodes are retained but detached from the group. `filePath` is required.",
         "userDescription": "Remove groups from the diagram.",
         "canBeReferencedInPrompt": true,
         "icon": "$(trash)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "groupIds"
-          ],
+          "required": ["filePath", "groupIds"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "groupIds": {
               "type": "array",
-              "items": {
-                "type": "string"
-              }
+              "items": { "type": "string" }
             }
           }
         }
       },
       {
         "name": "diagramflow_updateGroups",
-        "tags": [
-          "diagram",
-          "diagramflow"
-        ],
+        "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "updateGroups",
         "displayName": "Update Diagram Groups",
-        "modelDescription": "Updates properties of existing groups. Each update requires the group id. Updatable: label, color.",
+        "modelDescription": "Updates properties of existing groups in the .diagram file at `filePath`. Each update requires the group id. Updatable: label, color. `filePath` is required.",
         "userDescription": "Update properties of existing diagram groups.",
         "canBeReferencedInPrompt": true,
         "icon": "$(edit)",
         "inputSchema": {
           "type": "object",
-          "required": [
-            "updates"
-          ],
+          "required": ["filePath", "updates"],
           "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to modify."
+            },
             "updates": {
               "type": "array",
               "items": {
                 "type": "object",
-                "required": [
-                  "id"
-                ],
+                "required": ["id"],
                 "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "label": {
-                    "type": "string"
-                  },
+                  "id": { "type": "string" },
+                  "label": { "type": "string" },
                   "color": {
                     "type": "string",
-                    "enum": [
-                      "default",
-                      "blue",
-                      "green",
-                      "red",
-                      "yellow",
-                      "purple",
-                      "gray"
-                    ]
+                    "enum": ["default", "blue", "green", "red", "yellow", "purple", "gray"]
                   }
                 }
               }

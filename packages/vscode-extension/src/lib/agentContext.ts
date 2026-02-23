@@ -57,6 +57,9 @@ export function generateAgentContext(doc: DiagramDocument): AgentContext {
   const summary = buildSummary(doc, groupIndex);
   const insights = buildInsights(doc);
 
+  const textAnnotations = buildTextAnnotations(doc);
+  const imageAnnotations = buildImageAnnotations(doc);
+
   return {
     format: 'diagramflow-v1',
     generatedAt: new Date().toISOString(),
@@ -68,6 +71,8 @@ export function generateAgentContext(doc: DiagramDocument): AgentContext {
       ? { glossary: doc.meta.glossary }
       : {}),
     ...(insights.length > 0 ? { insights } : {}),
+    ...(textAnnotations.length > 0 ? { textAnnotations } : {}),
+    ...(imageAnnotations.length > 0 ? { imageAnnotations } : {}),
     usage: USAGE_HINT,
   };
 }
@@ -170,4 +175,37 @@ function buildInsights(doc: DiagramDocument): string[] {
   }
 
   return insights;
+}
+
+/**
+ * Builds the textAnnotations list from free-floating text elements.
+ * Only includes annotations with non-empty content so agents see
+ * callouts, legends, and design notes placed on the canvas.
+ */
+function buildTextAnnotations(
+  doc: DiagramDocument,
+): NonNullable<AgentContext['textAnnotations']> {
+  if (!doc.textElements || doc.textElements.length === 0) return [];
+  return doc.textElements
+    .filter((el) => el.content.trim() !== '')
+    .map((el) => ({
+      content: el.content,
+      ...(el.href ? { href: el.href } : {}),
+    }));
+}
+
+/**
+ * Builds the imageAnnotations list from free-floating image elements.
+ * Description is the primary LLM-readable field; agents use it to understand
+ * what the image depicts and how it relates to the rest of the diagram.
+ */
+function buildImageAnnotations(
+  doc: DiagramDocument,
+): NonNullable<AgentContext['imageAnnotations']> {
+  if (!doc.imageElements || doc.imageElements.length === 0) return [];
+  return doc.imageElements.map((el) => ({
+    src: el.src,
+    ...(el.description ? { description: el.description } : {}),
+    ...(el.href ? { href: el.href } : {}),
+  }));
 }

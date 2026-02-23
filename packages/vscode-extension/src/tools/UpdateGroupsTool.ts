@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import type { NodeColor } from '../types/DiagramDocument';
-import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
+import { openDiagramDocument, fileNameFromPath, revealDiagramInEditor } from './toolHelpers';
 
 interface UpdateGroupsInput {
   /** Absolute path to the .diagram file to modify. */
@@ -55,6 +55,7 @@ export class UpdateGroupsTool implements vscode.LanguageModelTool<UpdateGroupsIn
 
     const result = await this.diagramService.applySemanticOps(ops, opened.doc);
 
+    if (result.success) void revealDiagramInEditor(options.input.filePath);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(
         result.success

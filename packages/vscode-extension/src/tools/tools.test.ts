@@ -14,6 +14,7 @@ import { AddGroupsTool } from './AddGroupsTool';
 import { RemoveGroupsTool } from './RemoveGroupsTool';
 import { UpdateGroupsTool } from './UpdateGroupsTool';
 import { registerDiagramTools } from './index';
+import { fileNameFromPath, openDiagramDocument } from './toolHelpers';
 import type { DiagramService } from '../DiagramService';
 import type { DiagramDocument } from '../types/DiagramDocument';
 import * as vscode from 'vscode';
@@ -914,6 +915,74 @@ describe('buildReadableText', () => {
     expect(text).toContain('repo: github.com/org/svc');
     expect(text).toContain('team: platform');
   });
+
+  it('includes Canvas Annotations section when textAnnotations are present', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [],
+      generatedAt: new Date().toISOString(),
+      textAnnotations: [{ content: 'Blue = production services' }],
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('## Canvas Annotations');
+    expect(text).toContain('Blue = production services');
+  });
+
+  it('includes href in Canvas Annotations when set', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [],
+      generatedAt: new Date().toISOString(),
+      textAnnotations: [{ content: 'See ADR', href: 'https://example.com/adr/001' }],
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('See ADR');
+    expect(text).toContain('https://example.com/adr/001');
+  });
+
+  it('includes Canvas Images section when imageAnnotations are present', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [],
+      generatedAt: new Date().toISOString(),
+      imageAnnotations: [{ src: 'arch.png', description: 'High-level deployment diagram' }],
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).toContain('## Canvas Images');
+    expect(text).toContain('arch.png');
+    expect(text).toContain('High-level deployment diagram');
+  });
+
+  it('omits Canvas Annotations and Canvas Images sections when both are absent', () => {
+    const doc = makeDoc();
+    doc.agentContext = {
+      summary: 'Summary',
+      nodeIndex: [],
+      edgeIndex: [],
+      groupIndex: [],
+      generatedAt: new Date().toISOString(),
+    } as any;
+
+    const text = buildReadableText(doc);
+
+    expect(text).not.toContain('Canvas Annotations');
+    expect(text).not.toContain('Canvas Images');
+  });
 });
 
 describe('AddGroupsTool', () => {
@@ -1152,5 +1221,66 @@ describe('registerDiagramTools', () => {
     expect(toolNames).toContain('diagramflow_addGroups');
     expect(toolNames).toContain('diagramflow_removeGroups');
     expect(toolNames).toContain('diagramflow_updateGroups');
+  });
+});
+
+describe('fileNameFromPath', () => {
+  it('extracts the filename from an absolute path', () => {
+    expect(fileNameFromPath('/workspace/foo/bar.diagram')).toBe('bar.diagram');
+  });
+
+  it('returns the input unchanged when there are no slashes', () => {
+    expect(fileNameFromPath('standalone.diagram')).toBe('standalone.diagram');
+  });
+
+  it('handles a path ending with a slash by returning an empty string', () => {
+    expect(fileNameFromPath('/path/to/')).toBe('');
+  });
+
+  it('handles an empty string', () => {
+    expect(fileNameFromPath('')).toBe('');
+  });
+
+  it('handles a path with only the root slash', () => {
+    expect(fileNameFromPath('/filename.diagram')).toBe('filename.diagram');
+  });
+});
+
+describe('openDiagramDocument', () => {
+  it('returns the opened TextDocument on success', async () => {
+    const mockDoc = { getText: vi.fn().mockReturnValue('{}') };
+    vi.mocked(vscode.workspace.openTextDocument).mockResolvedValueOnce(mockDoc as any);
+
+    const result = await openDiagramDocument('/some/path.diagram');
+
+    expect('doc' in result).toBe(true);
+    if ('doc' in result) {
+      expect(result.doc).toBe(mockDoc);
+    }
+  });
+
+  it('returns an error object when the file cannot be opened', async () => {
+    vi.mocked(vscode.workspace.openTextDocument).mockRejectedValueOnce(
+      new Error('File not found'),
+    );
+
+    const result = await openDiagramDocument('/nonexistent/bad.diagram');
+
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error).toContain('Cannot open file');
+      expect(result.error).toContain('/nonexistent/bad.diagram');
+      expect(result.error).toContain('.diagram');
+    }
+  });
+
+  it('calls openTextDocument with a file URI for the given path', async () => {
+    vi.mocked(vscode.workspace.openTextDocument).mockResolvedValueOnce({} as any);
+
+    await openDiagramDocument('/workspace/arch.diagram');
+
+    expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ fsPath: '/workspace/arch.diagram' }),
+    );
   });
 });

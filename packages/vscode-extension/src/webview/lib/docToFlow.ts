@@ -1,5 +1,11 @@
 import type { Node, Edge } from '@xyflow/react';
-import type { DiagramDocument, DiagramNode as DocNode, DiagramGroup } from '../../types/DiagramDocument';
+import type {
+  DiagramDocument,
+  DiagramNode as DocNode,
+  DiagramGroup,
+  TextElement,
+  ImageElement,
+} from '../../types/DiagramDocument';
 import {
   DEFAULT_NODE_WIDTH,
   DEFAULT_NODE_HEIGHT,
@@ -18,17 +24,40 @@ export interface DiagramNodeData extends Record<string, unknown> {
   notes?: string;
   width: number;
   height: number;
+  type?: DocNode['type'];
+  tags?: string[];
+  properties?: DocNode['properties'];
+  securityClassification?: DocNode['securityClassification'];
+  deploymentEnvironment?: DocNode['deploymentEnvironment'];
 }
 
 export interface DiagramEdgeData extends Record<string, unknown> {
   style: 'solid' | 'dashed' | 'dotted';
   arrow: 'normal' | 'arrow' | 'open' | 'none';
+  protocol?: string;
+  dataTypes?: string[];
 }
 
 export interface DiagramGroupNodeData extends Record<string, unknown> {
   label: string;
   color?: NodeColor;
   collapsed?: boolean;
+}
+
+export interface TextElementNodeData extends Record<string, unknown> {
+  content: string;
+  fontSize?: number;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  href?: string;
+  onContentChange?: (id: string, content: string) => void;
+}
+
+export interface ImageElementNodeData extends Record<string, unknown> {
+  src: string;
+  description?: string;
+  href?: string;
 }
 
 /**
@@ -141,6 +170,11 @@ export function docToFlowNodes(doc: DiagramDocument): Node<DiagramNodeData>[] {
         notes: n.notes,
         width: w,
         height: h,
+        type: n.type,
+        tags: n.tags,
+        properties: n.properties,
+        securityClassification: n.securityClassification,
+        deploymentEnvironment: n.deploymentEnvironment,
       },
       width: w,
       height: h,
@@ -171,6 +205,45 @@ export function docToFlowEdges(doc: DiagramDocument): Edge<DiagramEdgeData>[] {
       label: e.label ?? '',
       animated: e.animated ?? false,
       reconnectable: true,
-      data: { style: e.style, arrow: e.arrow },
+      data: { style: e.style, arrow: e.arrow, protocol: e.protocol, dataTypes: e.dataTypes },
     }));
+}
+
+export function docToFlowTextElements(doc: DiagramDocument): Node<TextElementNodeData>[] {
+  return (doc.textElements ?? []).map((el: TextElement) => ({
+    id: `text-${el.id}`,
+    type: 'textElementNode',
+    position: { x: el.x, y: el.y },
+    width: el.width,
+    height: el.height,
+    data: {
+      content: el.content,
+      fontSize: el.fontSize,
+      color: el.color,
+      bold: el.bold,
+      italic: el.italic,
+      href: el.href,
+    },
+    draggable: true,
+    selectable: true,
+    style: { width: el.width, height: el.height, background: 'transparent', border: 'none' },
+  }));
+}
+
+export function docToFlowImageElements(doc: DiagramDocument): Node<ImageElementNodeData>[] {
+  return (doc.imageElements ?? []).map((el: ImageElement) => ({
+    id: `image-${el.id}`,
+    type: 'imageElementNode',
+    position: { x: el.x, y: el.y },
+    width: el.width,
+    height: el.height,
+    data: {
+      src: el.src,
+      description: el.description,
+      href: el.href,
+    },
+    draggable: true,
+    selectable: true,
+    style: { width: el.width, height: el.height },
+  }));
 }

@@ -111,6 +111,96 @@ Spec:
 
 ---
 
+### 18. Node Search / Find Panel
+**Priority: High**
+In diagrams with 30+ nodes, finding a specific node by scrolling the canvas is slow and error-prone. A keyboard-triggered search bar that filters nodes by label, notes, type, or tag would dramatically reduce navigation friction for both humans and LLM agents exploring an unfamiliar diagram.
+
+Spec:
+- `Ctrl+F` / `Cmd+F` opens a floating search input in the webview (similar to browser find bar)
+- Filter nodes live as the user types — non-matching nodes are dimmed, matching nodes are highlighted with an accent ring
+- Pressing `Enter` / `↓` cycles through matches; `Esc` clears the filter
+- The LLM tool `ReadDiagramTool` can optionally accept a `filter` parameter to return only matching nodes (reduces token usage on large diagrams)
+- Store last-used search term across panel re-opens within a session
+
+Similar: Excalidraw "Search for element" modal, Figma `Ctrl+F` layer search.
+
+---
+
+### 19. Copy / Paste / Duplicate Selected Nodes
+**Priority: High**
+Clipboard operations (`Ctrl+C`, `Ctrl+V`, `Ctrl+D`) are a muscle-memory expectation in every visual editor, yet DiagramFlow has no copy-paste support. Without it, recreating similar node patterns requires the LLM or the user to add nodes from scratch each time.
+
+Spec:
+- `Ctrl+C` serialises currently selected nodes + edges between them into an in-memory clipboard (not system clipboard — avoids security warnings in webviews)
+- `Ctrl+V` inserts a copy of the clipboard nodes at a fixed offset (+40px x/y) with new generated IDs and de-duplicated labels where appropriate
+- `Ctrl+D` combines copy + immediate paste in one keystroke (Figma / Excalidraw convention)
+- Edges whose both endpoints are in the copy set are also duplicated; edges to outside nodes are dropped
+- Expose as a `diagramflow_duplicateNodes` LLM tool for agents that want to clone a node as a variant
+
+Similar: Excalidraw `Ctrl+D`, draw.io `Ctrl+D`.
+
+---
+
+### 20. Inline Edge Label Editing (Double-Click)
+**Priority: Medium**
+Editing an edge label currently requires selecting the edge and toggling a properties panel. Every major visual editor (draw.io, Excalidraw, Figma) lets you double-click directly on an edge or its label to edit it in-place. The friction of the panel adds three extra clicks for what should be a one-second task.
+
+Spec:
+- Detect `dblclick` on an edge or its label in `CanvasPanel`
+- Show a small inline `<input>` centered on the edge midpoint, pre-filled with the current label
+- `Enter` or `blur` commits the change via the existing `EDGE_UPDATED` message path
+- `Esc` cancels without saving
+- Works for all edge types (bezier, step, straight) by positioning the input at the computed midpoint
+
+Similar: draw.io double-click edge label, Excalidraw text overlays on connectors.
+
+---
+
+### 21. Per-Edge Routing Style (Bezier / Step / Straight)
+**Priority: Medium**
+All edges currently share a single routing style. Architecture and infrastructure diagrams conventionally use orthogonal (right-angle / step) edges, while flow diagrams suit smooth bezier curves. Allowing users and LLM agents to choose routing per edge or set a diagram-wide default would make DiagramFlow output match professional diagramming conventions like C4, AWS, and network diagrams.
+
+Spec:
+- Add optional `edgeType?: 'default' | 'smoothstep' | 'step' | 'straight'` to the diagram edge schema (ReactFlow already supports all four natively)
+- Diagram-level default stored in `meta.defaultEdgeType`; per-edge value overrides the default
+- Edge context menu (right-click) shows "Routing: Bezier / Step / Straight" toggle buttons
+- `diagramflow_updateEdges` LLM tool schema updated to accept `edgeType`
+- VS Code command `DiagramFlow: Set Default Edge Routing` presents a Quick Pick
+
+Similar: draw.io connection style picker, Mermaid `graph LR` vs `flowchart` orthogonal routing.
+
+---
+
+### 22. Raster Export: Export as PNG / Copy to Clipboard
+**Priority: Medium**
+SVG export already exists, but SVGs are not universally accepted — Confluence pages, GitHub PR comments, Notion, and Slack all render PNGs reliably. A one-click PNG export or "Copy as image" shortcut would close the friction gap between creating a diagram and sharing it.
+
+Spec:
+- Use `html-to-image` (already widely used in ReactFlow projects) to snapshot the ReactFlow canvas div at a configurable scale (1×, 2× retina)
+- VS Code command `DiagramFlow: Export as PNG` triggers the webview snapshot, the webview sends the blob back as a base64 message, and the extension writes the file via `vscode.workspace.fs`
+- "Copy to Clipboard" variant uses the Clipboard API inside the webview — no file dialog needed
+- Honour the current viewport bbox or offer "Fit entire diagram" option before capture
+- The diagram JSON `meta` can optionally store the path of the last exported PNG for reference
+
+Similar: draw.io `File > Export as PNG`, Excalidraw `Export Image` panel.
+
+---
+
+### 23. Keyboard Shortcut Reference Panel
+**Priority: Low**
+DiagramFlow already supports a growing set of keyboard shortcuts (delete, Shift+click, Z for zoom-to-selection, etc.) but they are not discoverable. New users and LLM agents reading the README to drive the tool both lose time because there is no in-app reference. Excalidraw's `?` modal is a proven pattern ranked highly in user satisfaction surveys.
+
+Spec:
+- Press `?` in the canvas (when no input is focused) to toggle a floating shortcuts overlay
+- The overlay lists shortcut categories: Navigation, Node actions, Edge actions, Diagram-wide, Export
+- VS Code command `DiagramFlow: Show Keyboard Shortcuts` also opens it via Command Palette
+- The overlay source is a static TypeScript constant so it stays in sync with actual implementations (no docs drift)
+- Add a `?` icon button to the toolbar as a persistent access point
+
+Similar: Excalidraw `?` help dialog, Figma `Ctrl+Shift+?` keyboard shortcut panel.
+
+---
+
 ## LLM / Agent Context Enrichment Ideas
 
 > Research question: *What additional information can be stored in the diagram so an LLM agent understands the project architecture more accurately and makes better decisions?*
@@ -214,6 +304,37 @@ Spec:
 - Show a "drill-down" icon on nodes with a linked diagram
 - VS Code command `diagramflow.openLinkedDiagram` to navigate to the linked file
 - Include in `agentContext.nodeIndex[].linkedDiagram` so LLM tools can load sub-diagrams
+
+---
+
+### 24. LLM Diagram Bootstrap from Free-Text Description
+**Priority: High**
+Creating a diagram from scratch is the highest-friction entry point for both new users and agent-driven workflows. Tools like Eraser.io's DiagramGPT demonstrate that generating an initial layout from a plain-text description dramatically reduces time-to-first-useful-diagram. DiagramFlow has all the necessary LLM tools to populate a blank canvas — what's missing is the bootstrap orchestration layer.
+
+Spec:
+- Register VS Code command `DiagramFlow: Generate Diagram from Description` (Command Palette or toolbar `✨` button)
+- Opens an input box (or a multi-line quick-input widget) where the user describes the system in plain text (e.g. _"A React frontend → Node.js API → PostgreSQL database, with a Redis cache sidecar and an S3 bucket for file uploads"_)
+- The extension invokes a Copilot language model (`vscode.lm.selectChatModels`) with a structured system prompt that instructs the model to emit a sequence of `diagramflow_addNodes`, `diagramflow_addGroups`, and `diagramflow_addEdges` tool calls
+- The tool calls are executed sequentially against the currently open (or a new empty) `.diagram` file
+- After generation, the layout auto-runs (Dagre) so the result is immediately readable
+- Optional: a follow-up prompt input to iteratively refine the generated diagram ("add a load balancer in front of the API")
+
+Similar: Eraser.io DiagramGPT, Mermaid Live Editor AI mode, Whimsical AI diagramming.
+
+---
+
+### 25. LLM Tool: Find / Query Nodes by Predicate
+**Priority: Medium**
+The existing `ReadDiagramTool` returns the full diagram JSON, which for a 100-node diagram can consume 4–8k tokens per invocation. LLM agents that need to locate a specific node (e.g. "find all nodes tagged `status: deprecated`" or "find the node labelled 'AuthService'") pay a full-diagram cost every time. A targeted query tool with predicate filtering reduces token overhead by 90%+ on large diagrams and enables precise, surgical agent operations.
+
+Spec:
+- Register a new LLM tool `diagramflow_findNodes` with parameters: `labelContains?: string`, `type?: string`, `status?: string`, `tags?: string[]`, `group?: string`
+- The tool runs the predicate filter server-side (extension process) against the in-memory parsed diagram and returns only matching nodes (IDs, labels, and key properties)
+- Returns a lightweight JSON array — no edge or group data — keeping the response ≤ 500 tokens for most queries
+- Also supports `diagramflow_findEdges` with `sourceId?`, `targetId?`, `labelContains?` parameters
+- Include usage examples in the tool description schema so the LLM knows when to prefer this over `ReadDiagramTool`
+
+Similar: GitHub Copilot workspace `#file` scoping (targeted retrieval over full-repo dump), LangChain retrieval tools with filter predicates.
 
 ---
 

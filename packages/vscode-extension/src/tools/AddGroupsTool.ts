@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import type { DiagramService } from '../DiagramService';
 import type { NodeColor } from '../types/DiagramDocument';
-import { openDiagramDocument, fileNameFromPath } from './toolHelpers';
+import { openDiagramDocument, fileNameFromPath, revealDiagramInEditor } from './toolHelpers';
 
 interface AddGroupsInput {
   /** Absolute path to the .diagram file to modify. */
@@ -60,6 +60,7 @@ export class AddGroupsTool implements vscode.LanguageModelTool<AddGroupsInput> {
       ]);
     }
 
+    void revealDiagramInEditor(options.input.filePath);
     const doc = this.diagramService.parseDocument(opened.doc);
     const addedGroups = doc?.groups?.slice(-options.input.groups.length) ?? [];
     return new vscode.LanguageModelToolResult([

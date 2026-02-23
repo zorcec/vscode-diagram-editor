@@ -12,12 +12,16 @@ import {
   docToFlowNodes,
   docToFlowEdges,
   docToFlowGroupNodes,
+  docToFlowTextElements,
+  docToFlowImageElements,
   type DiagramNodeData,
   type DiagramEdgeData,
 } from '../lib/docToFlow';
-import { buildExportSvg, rasterizeSvgToPng } from '../lib/exportSvg';
-import { exportToMermaid } from '../../lib/exporters';
 import type {
+  NodeType,
+  SecurityClassification,
+  DeploymentEnvironment,
+  NodeProperties,
   DiagramDocument,
   DiagramGroup,
   NodeShape,
@@ -43,6 +47,8 @@ export interface GraphState {
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
   selectedGroupId: string | null;
+  selectedTextElementId: string | null;
+  selectedImageElementId: string | null;
   layoutDirection: LayoutDirection;
   layoutPending: boolean;
   searchQuery: string;
@@ -56,9 +62,16 @@ export interface GraphState {
   onEdgesDelete: (deleted: Edge[]) => void;
   onSelectionChange: (params: { nodes: Node[]; edges: Edge[] }) => void;
   onAddNode: () => void;
+  onAddNodeAt: (x: number, y: number, group?: string) => void;
   onAddNote: () => void;
+  onAddNoteAt: (x: number, y: number) => void;
   onAddGroup: () => void;
+  onAddText: () => void;
+  onAddTextAt: (x: number, y: number) => void;
+  onAddImage: (src: string, description?: string) => void;
+  onAddImageAt: (x: number, y: number, src: string, description?: string) => void;
   onNodeLabelChange: (id: string, label: string) => void;
+  onTextContentChange: (nodeId: string, content: string) => void;
   onUnpinNode: (id: string) => void;
   onUpdateNodeProps: (
     id: string,
@@ -69,13 +82,24 @@ export interface GraphState {
       notes?: string;
       group?: string | null;
       pinned?: boolean;
+      type?: NodeType;
+      tags?: string[];
+      properties?: NodeProperties;
+      securityClassification?: SecurityClassification;
+      deploymentEnvironment?: DeploymentEnvironment;
     },
   ) => void;
   onUpdateEdgeProps: (
     id: string,
-    changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean },
+    changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; protocol?: string; dataTypes?: string[] },
   ) => void;
   onUpdateGroupProps: (id: string, changes: { label?: string; color?: NodeColor; collapsed?: boolean }) => void;
+  onUpdateTextElementProps: (id: string, changes: {
+    content?: string; fontSize?: number; color?: string; bold?: boolean; italic?: boolean; href?: string; pinned?: boolean;
+  }) => void;
+  onUpdateImageElementProps: (id: string, changes: {
+    src?: string; description?: string; href?: string; pinned?: boolean;
+  }) => void;
   onToggleGroupCollapse: (id: string) => void;
   onSortNodes: (direction: LayoutDirection) => void;
   onRequestLayout: (direction?: LayoutDirection) => void;
@@ -87,10 +111,6 @@ export interface GraphState {
   onPaste: () => void;
   onSetSearch: (query: string) => void;
   onFitViewDone: () => void;
-  onExportSvg: () => void;
-  onExportPng: () => void;
-  onExportMermaid: () => void;
-  onOpenSvg: () => void;
 }
 
 export function useGraphState(
@@ -104,6 +124,8 @@ export function useGraphState(
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedTextElementId, setSelectedTextElementId] = useState<string | null>(null);
+  const [selectedImageElementId, setSelectedImageElementId] = useState<string | null>(null);
   const [groups, setGroups] = useState<DiagramGroup[]>([]);
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>('TB');
   const [layoutPending, setLayoutPending] = useState(false);
@@ -118,8 +140,10 @@ export function useGraphState(
 
     const groupNodes = docToFlowGroupNodes(doc);
     const regularNodes = docToFlowNodes(doc);
+    const textNodes = docToFlowTextElements(doc);
+    const imageNodes = docToFlowImageElements(doc);
     // Group nodes first so they render behind regular nodes (lower z-index).
-    setAllNodes([...groupNodes, ...regularNodes]);
+    setAllNodes([...groupNodes, ...regularNodes, ...textNodes, ...imageNodes]);
     setEdges(docToFlowEdges(doc));
     setGroups(doc.groups ?? []);
 
@@ -146,13 +170,19 @@ export function useGraphState(
   const onSelectionChange = useCallback(
     ({ nodes: selNodes, edges: selEdges }: { nodes: Node[]; edges: Edge[] }) => {
       const groupNode = selNodes.find((n) => n.type === 'diagramGroup') ?? null;
-      const regularNodes = selNodes.filter((n) => n.type !== 'diagramGroup');
+      const textNode = selNodes.find((n) => n.type === 'textElementNode') ?? null;
+      const imageNode = selNodes.find((n) => n.type === 'imageElementNode') ?? null;
+      const regularNodes = selNodes.filter(
+        (n) => n.type !== 'diagramGroup' && n.type !== 'textElementNode' && n.type !== 'imageElementNode',
+      );
 
       setSelectedGroupId(groupNode?.id ?? null);
       setSelectedNodeId(regularNodes.length === 1 ? regularNodes[0].id : null);
       setSelectedEdgeId(
         selEdges.length === 1 && regularNodes.length === 0 ? selEdges[0].id : null,
       );
+      setSelectedTextElementId(textNode ? textNode.id.replace(/^text-/, '') : null);
+      setSelectedImageElementId(imageNode ? imageNode.id.replace(/^image-/, '') : null);
     },
     [],
   );
@@ -194,6 +224,22 @@ export function useGraphState(
           });
           return;
         }
+        if (node.type === 'textElementNode') {
+          bridge.postMessage({
+            type: 'TEXT_ELEMENT_MOVED',
+            id: node.id.replace(/^text-/, ''),
+            position: { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+          });
+          return;
+        }
+        if (node.type === 'imageElementNode') {
+          bridge.postMessage({
+            type: 'IMAGE_ELEMENT_MOVED',
+            id: node.id.replace(/^image-/, ''),
+            position: { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+          });
+          return;
+        }
 
         const pos = toAbsolute(node);
         bridge.postMessage({ type: 'NODE_DRAGGED', id: node.id, position: pos });
@@ -204,10 +250,25 @@ export function useGraphState(
       const moves: { id: string; position: { x: number; y: number } }[] = [];
       for (const n of nodes) {
         if (n.type === 'diagramGroup') {
-          // Persist each dragged group individually.
           bridge.postMessage({
             type: 'GROUP_DRAGGED',
             id: n.id,
+            position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
+          });
+          continue;
+        }
+        if (n.type === 'textElementNode') {
+          bridge.postMessage({
+            type: 'TEXT_ELEMENT_MOVED',
+            id: n.id.replace(/^text-/, ''),
+            position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
+          });
+          continue;
+        }
+        if (n.type === 'imageElementNode') {
+          bridge.postMessage({
+            type: 'IMAGE_ELEMENT_MOVED',
+            id: n.id.replace(/^image-/, ''),
             position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
           });
           continue;
@@ -246,17 +307,29 @@ export function useGraphState(
   const onNodesDelete = useCallback(
     (deleted: Node[]) => {
       const nodeIds = deleted
-        .filter((n) => n.type !== 'diagramGroup')
+        .filter((n) => n.type !== 'diagramGroup' && n.type !== 'textElementNode' && n.type !== 'imageElementNode')
         .map((n) => n.id);
       const groupIds = deleted
         .filter((n) => n.type === 'diagramGroup')
         .map((n) => n.id);
+      const textElementIds = deleted
+        .filter((n) => n.type === 'textElementNode')
+        .map((n) => n.id.replace(/^text-/, ''));
+      const imageElementIds = deleted
+        .filter((n) => n.type === 'imageElementNode')
+        .map((n) => n.id.replace(/^image-/, ''));
 
       if (nodeIds.length > 0) {
         bridge.postMessage({ type: 'DELETE_NODES', nodeIds });
       }
       if (groupIds.length > 0) {
         bridge.postMessage({ type: 'DELETE_GROUPS', groupIds });
+      }
+      if (textElementIds.length > 0) {
+        bridge.postMessage({ type: 'DELETE_TEXT_ELEMENTS', elementIds: textElementIds });
+      }
+      if (imageElementIds.length > 0) {
+        bridge.postMessage({ type: 'DELETE_IMAGE_ELEMENTS', elementIds: imageElementIds });
       }
     },
     [bridge],
@@ -279,6 +352,16 @@ export function useGraphState(
     });
   }, [bridge]);
 
+  const onAddNodeAt = useCallback(
+    (x: number, y: number, group?: string) => {
+      bridge.postMessage({
+        type: 'ADD_NODE',
+        node: { label: 'New Node', shape: 'rectangle', color: 'default', x, y, pinned: true, group },
+      });
+    },
+    [bridge],
+  );
+
   const onAddNote = useCallback(() => {
     bridge.postMessage({
       type: 'ADD_NODE',
@@ -286,9 +369,81 @@ export function useGraphState(
     });
   }, [bridge]);
 
+  const onAddNoteAt = useCallback(
+    (x: number, y: number) => {
+      bridge.postMessage({
+        type: 'ADD_NODE',
+        node: { label: 'Note', shape: 'note', color: 'yellow', x, y, pinned: true },
+      });
+    },
+    [bridge],
+  );
+
   const onAddGroup = useCallback(() => {
     bridge.postMessage({ type: 'ADD_GROUP', label: 'New Group' });
   }, [bridge]);
+
+  const onAddText = useCallback(() => {
+    bridge.postMessage({
+      type: 'ADD_TEXT_ELEMENT',
+      element: { x: 100, y: 100, width: 200, height: 60, content: 'Text' },
+    });
+  }, [bridge]);
+
+  const onAddTextAt = useCallback(
+    (x: number, y: number) => {
+      bridge.postMessage({
+        type: 'ADD_TEXT_ELEMENT',
+        element: { x, y, width: 200, height: 60, content: 'Text' },
+      });
+    },
+    [bridge],
+  );
+
+  const onAddImage = useCallback(
+    (src: string, description?: string) => {
+      bridge.postMessage({
+        type: 'ADD_IMAGE_ELEMENT',
+        element: { x: 100, y: 100, width: 200, height: 150, src, description },
+      });
+    },
+    [bridge],
+  );
+
+  const onAddImageAt = useCallback(
+    (x: number, y: number, src: string, description?: string) => {
+      bridge.postMessage({
+        type: 'ADD_IMAGE_ELEMENT',
+        element: { x, y, width: 200, height: 150, src, description },
+      });
+    },
+    [bridge],
+  );
+
+  const onTextContentChange = useCallback(
+    (nodeId: string, content: string) => {
+      bridge.postMessage({
+        type: 'UPDATE_TEXT_ELEMENT',
+        id: nodeId,
+        changes: { content },
+      });
+    },
+    [bridge],
+  );
+
+  const onUpdateTextElementProps = useCallback(
+    (id: string, changes: { content?: string; fontSize?: number; color?: string; bold?: boolean; italic?: boolean; href?: string; pinned?: boolean }) => {
+      bridge.postMessage({ type: 'UPDATE_TEXT_ELEMENT', id, changes });
+    },
+    [bridge],
+  );
+
+  const onUpdateImageElementProps = useCallback(
+    (id: string, changes: { src?: string; description?: string; href?: string; pinned?: boolean }) => {
+      bridge.postMessage({ type: 'UPDATE_IMAGE_ELEMENT', id, changes });
+    },
+    [bridge],
+  );
 
   const onNodeLabelChange = useCallback(
     (id: string, label: string) => {
@@ -314,6 +469,11 @@ export function useGraphState(
         notes?: string;
         group?: string | null;
         pinned?: boolean;
+        type?: NodeType;
+        tags?: string[];
+        properties?: NodeProperties;
+        securityClassification?: SecurityClassification;
+        deploymentEnvironment?: DeploymentEnvironment;
       },
     ) => {
       bridge.postMessage({ type: 'UPDATE_NODE_PROPS', id, changes });
@@ -324,7 +484,7 @@ export function useGraphState(
   const onUpdateEdgeProps = useCallback(
     (
       id: string,
-      changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean },
+      changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; protocol?: string; dataTypes?: string[] },
     ) => {
       bridge.postMessage({ type: 'UPDATE_EDGE_PROPS', id, changes });
     },
@@ -423,30 +583,6 @@ export function useGraphState(
     setLayoutPending(false);
   }, []);
 
-  const onExportSvg = useCallback(() => {
-    const svgData = buildExportSvg(doc);
-    if (!svgData) return;
-    bridge.postMessage({ type: 'EXPORT', format: 'svg', data: svgData });
-  }, [bridge, doc]);
-
-  const onExportPng = useCallback(() => {
-    const svgData = buildExportSvg(doc);
-    if (!svgData) return;
-    rasterizeSvgToPng(svgData, (base64) => {
-      bridge.postMessage({ type: 'EXPORT', format: 'png', data: base64 });
-    });
-  }, [bridge, doc]);
-
-  const onExportMermaid = useCallback(() => {
-    if (!doc) return;
-    const mermaidText = exportToMermaid(doc);
-    bridge.postMessage({ type: 'EXPORT', format: 'mermaid', data: mermaidText });
-  }, [bridge, doc]);
-
-  const onOpenSvg = useCallback(() => {
-    bridge.postMessage({ type: 'OPEN_SVG_REQUEST' });
-  }, [bridge]);
-
   return {
     nodes,
     allNodes,
@@ -455,6 +591,8 @@ export function useGraphState(
     selectedNodeId,
     selectedEdgeId,
     selectedGroupId,
+    selectedTextElementId,
+    selectedImageElementId,
     layoutDirection,
     layoutPending,
     searchQuery,
@@ -468,13 +606,22 @@ export function useGraphState(
     onEdgesDelete,
     onSelectionChange,
     onAddNode,
+    onAddNodeAt,
     onAddNote,
+    onAddNoteAt,
     onAddGroup,
+    onAddText,
+    onAddTextAt,
+    onAddImage,
+    onAddImageAt,
     onNodeLabelChange,
+    onTextContentChange,
     onUnpinNode,
     onUpdateNodeProps,
     onUpdateEdgeProps,
     onUpdateGroupProps,
+    onUpdateTextElementProps,
+    onUpdateImageElementProps,
     onToggleGroupCollapse,
     onSortNodes,
     onRequestLayout,
@@ -486,9 +633,5 @@ export function useGraphState(
     onPaste,
     onSetSearch,
     onFitViewDone,
-    onExportSvg,
-    onExportPng,
-    onExportMermaid,
-    onOpenSvg,
   };
 }

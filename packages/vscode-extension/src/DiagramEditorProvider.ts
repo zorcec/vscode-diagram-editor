@@ -240,6 +240,95 @@ export class DiagramEditorProvider implements vscode.CustomTextEditorProvider {
       case 'OPEN_SVG_REQUEST':
         await DiagramEditorProvider.openSvgImportFlow();
         break;
+
+      // -----------------------------------------------------------------------
+      // Text elements
+      // -----------------------------------------------------------------------
+
+      case 'ADD_TEXT_ELEMENT':
+        await this.diagramService.addTextElement(
+          {
+            x: msg.element.x ?? 100,
+            y: msg.element.y ?? 100,
+            width: msg.element.width ?? 200,
+            height: msg.element.height ?? 30,
+            content: msg.element.content,
+            ...(msg.element.fontSize !== undefined && { fontSize: msg.element.fontSize }),
+            ...(msg.element.color && { color: msg.element.color }),
+            ...(msg.element.bold !== undefined && { bold: msg.element.bold }),
+            ...(msg.element.italic !== undefined && { italic: msg.element.italic }),
+            ...(msg.element.href && { href: msg.element.href }),
+          },
+          document,
+        );
+        break;
+
+      case 'UPDATE_TEXT_ELEMENT':
+        await this.diagramService.updateTextElement(msg.id, msg.changes, document);
+        break;
+
+      case 'DELETE_TEXT_ELEMENTS':
+        await this.diagramService.deleteTextElements(msg.elementIds, document);
+        break;
+
+      case 'TEXT_ELEMENT_MOVED':
+        await this.diagramService.updateTextElement(
+          msg.id,
+          { x: Math.round(msg.position.x), y: Math.round(msg.position.y), pinned: true },
+          document,
+        );
+        break;
+
+      case 'TEXT_ELEMENT_RESIZED':
+        await this.diagramService.updateTextElement(
+          msg.id,
+          { width: Math.round(msg.dimensions.width), height: Math.round(msg.dimensions.height) },
+          document,
+        );
+        break;
+
+      // -----------------------------------------------------------------------
+      // Image elements
+      // -----------------------------------------------------------------------
+
+      case 'ADD_IMAGE_ELEMENT':
+        await this.diagramService.addImageElement(
+          {
+            src: msg.element.src,
+            x: msg.element.x ?? 100,
+            y: msg.element.y ?? 100,
+            width: msg.element.width ?? 200,
+            height: msg.element.height ?? 150,
+            ...(msg.element.description && { description: msg.element.description }),
+            ...(msg.element.href && { href: msg.element.href }),
+          },
+          document,
+        );
+        break;
+
+      case 'UPDATE_IMAGE_ELEMENT':
+        await this.diagramService.updateImageElement(msg.id, msg.changes, document);
+        break;
+
+      case 'DELETE_IMAGE_ELEMENTS':
+        await this.diagramService.deleteImageElements(msg.elementIds, document);
+        break;
+
+      case 'IMAGE_ELEMENT_MOVED':
+        await this.diagramService.updateImageElement(
+          msg.id,
+          { x: Math.round(msg.position.x), y: Math.round(msg.position.y), pinned: true },
+          document,
+        );
+        break;
+
+      case 'IMAGE_ELEMENT_RESIZED':
+        await this.diagramService.updateImageElement(
+          msg.id,
+          { width: Math.round(msg.dimensions.width), height: Math.round(msg.dimensions.height) },
+          document,
+        );
+        break;
     }
   }
 

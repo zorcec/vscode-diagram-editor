@@ -1,13 +1,12 @@
 /**
- * E2E test: Export and Import SVG
+ * E2E test: SVG Diagram Format
  *
- * Verifies that DiagramFlow's export (Save SVG / Save PNG) and import
- * (Open SVG) commands are reachable and the SVG round-trip metadata format
- * is well-structured. Since native file dialogs cannot be automated via
- * Playwright, these tests verify:
- *   1. Commands appear in the command palette
- *   2. The exported SVG fixture has the expected metadata structure (file-system)
- *   3. The extractDiagramFromSvg logic works at the integration level
+ * Verifies that .diagram.svg files work correctly:
+ *   1. The SVG contains embedded diagram metadata in <diagramflow:source> tags
+ *   2. The metadata is not visible when viewing the SVG as an image
+ *   3. The diagram JSON can be extracted from the SVG (round-trip)
+ *   4. Plain SVG files without metadata are handled gracefully
+ *   5. The .diagram.svg file opens in the custom editor when the extension is installed
  */
 
 import { expect } from '@playwright/test';
@@ -16,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const FIXTURE_SVG = path.resolve(__dirname, 'test-project', 'exported.svg');
+const DIAGRAM_SVG = path.resolve(__dirname, 'test-project', 'test-metadata.diagram.svg');
 const DIAGRAM_SOURCE_RE = /<diagramflow:source[^>]*>([\s\S]*?)<\/diagramflow:source>/;
 
 function extractDiagramFromSvg(svgContent: string): string | null {
@@ -31,41 +31,16 @@ function extractDiagramFromSvg(svgContent: string): string | null {
   }
 }
 
-test.describe('Export and Import SVG', () => {
-  test('DiagramFlow: Export as SVG command is in the command palette', async ({
+test.describe('SVG Diagram Format', () => {
+  test('.diagram.svg file opens in diagram editor', async ({
     vscPage,
   }) => {
-    await vscPage.openFile('simple.diagram');
-    await vscPage.page.waitForTimeout(1000);
-    await vscPage.page.keyboard.press('Control+Shift+P');
-    await vscPage.page.waitForTimeout(500);
+    await vscPage.openFile('test-metadata.diagram.svg');
+    await vscPage.page.waitForTimeout(3000);
 
-    const input = vscPage.page.locator('.quick-input-widget input[type="text"]');
-    await input.fill('DiagramFlow: Export as SVG');
-    await vscPage.page.waitForTimeout(800);
-
-    const items = vscPage.page.locator('.quick-input-list .monaco-list-row');
-    const count = await items.count();
-    expect(count).toBeGreaterThan(0);
-
-    await vscPage.page.keyboard.press('Escape');
-  });
-
-  test('DiagramFlow: Import SVG command is in the command palette', async ({
-    vscPage,
-  }) => {
-    await vscPage.page.keyboard.press('Control+Shift+P');
-    await vscPage.page.waitForTimeout(500);
-
-    const input = vscPage.page.locator('.quick-input-widget input[type="text"]');
-    await input.fill('DiagramFlow: Import SVG');
-    await vscPage.page.waitForTimeout(800);
-
-    const items = vscPage.page.locator('.quick-input-list .monaco-list-row');
-    const count = await items.count();
-    expect(count).toBeGreaterThan(0);
-
-    await vscPage.page.keyboard.press('Escape');
+    // The custom editor should be active — check for the canvas container inside a webview
+    const tab = vscPage.page.locator('.tab').filter({ hasText: 'test-metadata.diagram.svg' });
+    await expect(tab).toBeVisible({ timeout: 5000 });
   });
 
   test('exported.svg fixture has valid embedded .diagram metadata', () => {
@@ -110,5 +85,62 @@ test.describe('Export and Import SVG', () => {
   <rect width="100" height="100" fill="red"/>
 </svg>`;
     expect(extractDiagramFromSvg(plainSvg)).toBeNull();
+  });
+
+  test('.diagram.svg has metadata inside non-visible <metadata> tag', () => {
+    const content = fs.readFileSync(DIAGRAM_SVG, 'utf-8');
+
+    // The <metadata> tag is a standard SVG element that should not render
+    expect(content).toContain('<metadata>');
+    expect(content).toContain('</metadata>');
+    expect(content).toContain('<diagramflow:source');
+    expect(content).toContain('</diagramflow:source>');
+
+    // The embedded JSON should be extractable
+    const json = extractDiagramFromSvg(content);
+    expect(json).not.toBeNull();
+
+    const doc = JSON.parse(json!);
+    expect(doc.meta).toBeDefined();
+    expect(Array.isArray(doc.nodes)).toBe(true);
+    expect(Array.isArray(doc.edges)).toBe(true);
+  });
+
+  test('.diagram.svg is valid SVG markup', () => {
+    const content = fs.readFileSync(DIAGRAM_SVG, 'utf-8');
+
+    // Must start with XML prolog or <svg
+    expect(content).toMatch(/^<\?xml|^<svg/);
+    // Must have <svg> root element
+    expect(content).toContain('<svg');
+    expect(content).toContain('</svg>');
+    // Must have xmlns attribute
+    expect(content).toContain('xmlns="http://www.w3.org/2000/svg"');
+  });
+
+  test('.diagram.svg round-trip: extract and re-embed preserves data', () => {
+    const content = fs.readFileSync(DIAGRAM_SVG, 'utf-8');
+    const json = extractDiagramFromSvg(content)!;
+    const doc = JSON.parse(json);
+
+    // Verify core structure survived the round trip
+    expect(doc.meta.title).toBeDefined();
+    expect(doc.nodes.length).toBeGreaterThan(0);
+    expect(doc.edges.length).toBeGreaterThan(0);
+
+    // All nodes must have id, label, x, y
+    for (const node of doc.nodes) {
+      expect(node.id).toBeDefined();
+      expect(node.label).toBeDefined();
+      expect(typeof node.x).toBe('number');
+      expect(typeof node.y).toBe('number');
+    }
+
+    // All edges must reference valid node IDs
+    const nodeIds = new Set(doc.nodes.map((n: { id: string }) => n.id));
+    for (const edge of doc.edges) {
+      expect(nodeIds.has(edge.source)).toBe(true);
+      expect(nodeIds.has(edge.target)).toBe(true);
+    }
   });
 });
