@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "license": "Apache-2.0",
   "publisher": "diagramflow",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/diagramflow/vscode-diagram-editor"
+  },
   "main": "dist/extension.js",
   "types": "dist/extension.d.ts",
   "scripts": {

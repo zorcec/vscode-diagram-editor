@@ -11,6 +11,17 @@ function isDiagramFile(fileName: string): boolean {
   return fileName.endsWith('.diagram.svg');
 }
 
+/** Ensures a diagram document is set as active, falling back to any open one. */
+function ensureActiveDiagram(diagramService: DiagramService): void {
+  if (diagramService.getActiveDocument()) return;
+  const fallback = vscode.workspace.textDocuments.find(
+    (d) => isDiagramFile(d.fileName) && !d.isClosed,
+  );
+  if (fallback) {
+    diagramService.setActiveDocument(fallback);
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const diagramService = new DiagramService();
 
@@ -31,26 +42,11 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }),
     vscode.commands.registerCommand('diagramflow.sortNodes', () => {
-      // If no activeDocument (e.g. panel lost focus), try finding any open diagram file.
-      if (!diagramService.getActiveDocument()) {
-        const fallback = vscode.workspace.textDocuments.find(
-          (d) => isDiagramFile(d.fileName) && !d.isClosed,
-        );
-        if (fallback) {
-          diagramService.setActiveDocument(fallback);
-        }
-      }
+      ensureActiveDiagram(diagramService);
       diagramService.sortNodes();
     }),
     vscode.commands.registerCommand('diagramflow.autoLayout', () => {
-      if (!diagramService.getActiveDocument()) {
-        const fallback = vscode.workspace.textDocuments.find(
-          (d) => isDiagramFile(d.fileName) && !d.isClosed,
-        );
-        if (fallback) {
-          diagramService.setActiveDocument(fallback);
-        }
-      }
+      ensureActiveDiagram(diagramService);
       diagramService.autoLayoutAll();
     }),
     vscode.commands.registerCommand('diagramflow.autoLayoutForce', () => {

@@ -19,6 +19,12 @@ node_modules
 e2e/
 test/
 
+## Source and config files (not needed at runtime — dist/ is sufficient)
+src/
+esbuild.config.mjs
+tsconfig.json
+vitest.config.ts
+
 ## Build and editor files
 dist/**/*.map
 dist/**/*.d.ts

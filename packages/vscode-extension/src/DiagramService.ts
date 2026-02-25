@@ -40,11 +40,10 @@ export class DiagramService {
   }
 
   async undo(doc?: vscode.TextDocument): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target || this.undoStack.length === 0) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
+    if (this.undoStack.length === 0) return;
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
 
     const previous = this.undoStack.pop()!;
     this.redoStack.push(structuredClone(current));
@@ -52,11 +51,10 @@ export class DiagramService {
   }
 
   async redo(doc?: vscode.TextDocument): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target || this.redoStack.length === 0) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
+    if (this.redoStack.length === 0) return;
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
 
     const next = this.redoStack.pop()!;
     this.undoStack.push(structuredClone(current));
@@ -79,15 +77,27 @@ export class DiagramService {
     }
   }
 
+  /**
+   * Resolves target document and parses its content in one step.
+   * Returns null when no document is active or the document cannot be parsed.
+   */
+  private resolveDocument(
+    doc?: vscode.TextDocument,
+  ): { target: vscode.TextDocument; current: DiagramDocument } | null {
+    const target = doc ?? this.activeDocument;
+    if (!target) return null;
+    const current = this.parseDocument(target);
+    if (!current) return null;
+    return { target, current };
+  }
+
   async applySemanticOps(
     ops: SemanticOp[],
     doc?: vscode.TextDocument,
   ): Promise<{ success: boolean; error?: string }> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return { success: false, error: 'No active diagram document' };
-
-    const current = this.parseDocument(target);
-    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
 
     const result = applyOps(current, ops, () => nanoid(8));
     if (!result.success || !result.document) {
@@ -107,58 +117,40 @@ export class DiagramService {
   }
 
   async autoLayoutAll(doc?: vscode.TextDocument, direction?: LayoutDirection): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
-
-    const config: LayoutConfig = { ...DEFAULT_LAYOUT_CONFIG, rankdir: direction ?? current.meta.layoutDirection ?? 'TB' };
-    const resetDoc = structuredClone(current);
-    // Persist direction choice in meta.
-    resetDoc.meta.layoutDirection = config.rankdir as LayoutDirection;
-    // Only reset positions for non-pinned nodes; pinned nodes stay where the user placed them.
-    for (const node of resetDoc.nodes) {
-      if (!node.pinned) {
-        node.x = 0;
-        node.y = 0;
-      }
-    }
-
-    const layoutResults = computeFullLayout(resetDoc, config);
-    for (const lr of layoutResults) {
-      const node = resetDoc.nodes.find((n) => n.id === lr.nodeId);
-      if (node) {
-        node.x = lr.x;
-        node.y = lr.y;
-      }
-    }
-
-    this.stampModified(resetDoc);
-    this.recordHistory(current);
-    await writeDocumentToFile(target, resetDoc);
+    return this.applyLayout(doc, direction, false);
   }
 
   /** Force auto-layout — repositions ALL nodes regardless of pinned status. */
   async autoLayoutForce(doc?: vscode.TextDocument, direction?: LayoutDirection): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return;
+    return this.applyLayout(doc, direction, true);
+  }
 
-    const current = this.parseDocument(target);
-    if (!current) return;
+  private async applyLayout(
+    doc: vscode.TextDocument | undefined,
+    direction: LayoutDirection | undefined,
+    force: boolean,
+  ): Promise<void> {
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
 
-    const config: LayoutConfig = { ...DEFAULT_LAYOUT_CONFIG, rankdir: direction ?? current.meta.layoutDirection ?? 'TB' };
+    const config: LayoutConfig = {
+      ...DEFAULT_LAYOUT_CONFIG,
+      rankdir: direction ?? current.meta.layoutDirection ?? 'TB',
+    };
     const resetDoc = structuredClone(current);
     resetDoc.meta.layoutDirection = config.rankdir as LayoutDirection;
-    // Reset ALL node positions (including pinned) for a fresh layout.
+
     for (const node of resetDoc.nodes) {
-      node.x = 0;
-      node.y = 0;
-      node.pinned = false;
+      if (force || !node.pinned) {
+        node.x = 0;
+        node.y = 0;
+      }
+      if (force) node.pinned = false;
     }
 
-    const layoutResults = computeForcedLayout(resetDoc, config);
-    for (const lr of layoutResults) {
+    const layoutFn = force ? computeForcedLayout : computeFullLayout;
+    for (const lr of layoutFn(resetDoc, config)) {
       const node = resetDoc.nodes.find((n) => n.id === lr.nodeId);
       if (node) {
         node.x = lr.x;
@@ -177,14 +169,13 @@ export class DiagramService {
    * scoped sorting. Callable from VS Code commands (no webview interaction needed).
    */
   async sortNodes(groupId?: string, doc?: vscode.TextDocument): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
-
-    const direction = current.meta.layoutDirection ?? 'TB';
-    await this.applySemanticOps([{ op: 'sort_nodes', direction, groupId }], target);
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
+    await this.applySemanticOps(
+      [{ op: 'sort_nodes', direction: current.meta.layoutDirection ?? 'TB', groupId }],
+      target,
+    );
   }
 
   /**
@@ -197,11 +188,9 @@ export class DiagramService {
     moves: { id: string; position: { x: number; y: number } }[],
     doc?: vscode.TextDocument,
   ): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const affectedGroupIds = new Set<string>();
@@ -240,11 +229,9 @@ export class DiagramService {
     position: { x: number; y: number },
     doc?: vscode.TextDocument,
   ): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const node = modified.nodes.find((n) => n.id === id);
@@ -276,11 +263,9 @@ export class DiagramService {
     newPosition: { x: number; y: number },
     doc?: vscode.TextDocument,
   ): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const group = modified.groups?.find((g) => g.id === groupId);
@@ -311,11 +296,9 @@ export class DiagramService {
     newTarget: string,
     doc?: vscode.TextDocument,
   ): Promise<void> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return;
-
-    const current = this.parseDocument(target);
-    if (!current) return;
+    const state = this.resolveDocument(doc);
+    if (!state) return;
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const edge = modified.edges.find((e) => e.id === id);
@@ -337,10 +320,9 @@ export class DiagramService {
     element: Omit<TextElement, 'id'>,
     doc?: vscode.TextDocument,
   ): Promise<{ success: boolean; id?: string; error?: string }> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return { success: false, error: 'No active diagram document' };
-    const current = this.parseDocument(target);
-    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const id = nanoid(8);
@@ -356,10 +338,9 @@ export class DiagramService {
     changes: Partial<Omit<TextElement, 'id'>>,
     doc?: vscode.TextDocument,
   ): Promise<{ success: boolean; error?: string }> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return { success: false, error: 'No active diagram document' };
-    const current = this.parseDocument(target);
-    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const el = modified.textElements?.find((e) => e.id === id);
@@ -372,10 +353,9 @@ export class DiagramService {
   }
 
   async deleteTextElements(ids: string[], doc?: vscode.TextDocument): Promise<{ success: boolean; error?: string }> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return { success: false, error: 'No active diagram document' };
-    const current = this.parseDocument(target);
-    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     modified.textElements = (modified.textElements ?? []).filter((e) => !ids.includes(e.id));
@@ -392,10 +372,9 @@ export class DiagramService {
     element: Omit<ImageElement, 'id'>,
     doc?: vscode.TextDocument,
   ): Promise<{ success: boolean; id?: string; error?: string }> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return { success: false, error: 'No active diagram document' };
-    const current = this.parseDocument(target);
-    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const id = nanoid(8);
@@ -411,10 +390,9 @@ export class DiagramService {
     changes: Partial<Omit<ImageElement, 'id'>>,
     doc?: vscode.TextDocument,
   ): Promise<{ success: boolean; error?: string }> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return { success: false, error: 'No active diagram document' };
-    const current = this.parseDocument(target);
-    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     const el = modified.imageElements?.find((e) => e.id === id);
@@ -427,10 +405,9 @@ export class DiagramService {
   }
 
   async deleteImageElements(ids: string[], doc?: vscode.TextDocument): Promise<{ success: boolean; error?: string }> {
-    const target = doc ?? this.activeDocument;
-    if (!target) return { success: false, error: 'No active diagram document' };
-    const current = this.parseDocument(target);
-    if (!current) return { success: false, error: 'Failed to parse diagram document' };
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
 
     const modified = structuredClone(current);
     modified.imageElements = (modified.imageElements ?? []).filter((e) => !ids.includes(e.id));
