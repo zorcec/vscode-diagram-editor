@@ -13,6 +13,11 @@ interface AddEdgesInput {
     style?: string;
     arrow?: string;
     animated?: boolean;
+    /**
+     * When true the edge has arrowheads at BOTH ends, expressing a bidirectional
+     * relationship. Use this when two components call each other directly.
+     */
+    bidirectional?: boolean;
   }[];
 }
 
@@ -56,6 +61,7 @@ export class AddEdgesTool implements vscode.LanguageModelTool<AddEdgesInput> {
         ...(e.style && { style: e.style as EdgeStyle }),
         ...(e.arrow && { arrow: e.arrow as ArrowType }),
         ...(e.animated !== undefined && { animated: e.animated }),
+        ...(e.bidirectional !== undefined && { bidirectional: e.bidirectional }),
       },
     }));
 

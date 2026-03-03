@@ -270,9 +270,53 @@ all semantic metadata flattened into a searchable structure.
   "imageAnnotations": [
     { "src": "arch.png", "description": "Deployment topology for prod cluster" }
   ],
+  "llmNotes": "Auth service is stateless; session state lives in Redis only.",
   "usage": "When the DiagramFlow VS Code extension is installed, use the diagramflow_* tools ..."
 }
 ```
+
+### `agentContext.llmNotes` — Agent Long-Term Memory
+
+The `llmNotes` field is **written by agents** and persisted across sessions. Use it to
+record cross-cutting observations, architectural constraints, and patterns that should be
+remembered every time this diagram is accessed.
+
+**Populate via the `diagramflow_setLlmNotes` LM tool.**
+
+```json
+// Good llmNotes examples:
+"llmNotes": "Auth service is stateless — session tokens stored in Redis only. Never add DB calls to the auth path. OrderService→PaymentService is synchronous REST; switching to async requires ADR-024 approval."
+```
+
+**Rules for agents:**
+1. Read `agentContext.llmNotes` before making any diagram edits — it contains prior reasoning.
+2. Append new observations using `diagramflow_setLlmNotes` when you discover constraints or
+   decisions that would help future sessions avoid mistakes.
+3. Keep notes concise (< 500 chars) and factual — not a session transcript.
+
+---
+
+### `edges[].bidirectional` — Bidirectional Communication
+
+When two components call each other directly (both issue requests), set `bidirectional: true`
+on the edge. The diagram renders arrows at both ends; the `agentContext.edgeIndex` sets
+`bidirectional: true` so agents know the relationship is mutual.
+
+**Set via `diagramflow_addEdges` or `diagramflow_updateEdges`:**
+
+```json
+{
+  "source": "API Gateway",
+  "target": "Auth Service",
+  "label": "authenticate / callback",
+  "bidirectional": true
+}
+```
+
+Use bidirectional sparingly — it signals tight coupling. If the communication is naturally
+one-way (request → response), leave bidirectional unset and rely on the implied return.
+
+---
 
 ### When the Extension Is Installed
 
@@ -294,10 +338,14 @@ property sets not included in `agentContext`.
 3. Set `meta.owners` so agents know who to contact.
 4. For each node: set `type`, write a one-sentence `notes`, add relevant `properties`
    (especially `repo`, `team`, and `adr` when applicable).
-5. For each significant edge: set `label`, `protocol`, and `dataTypes`.
+5. For each significant edge: set `label`, `protocol`, and `dataTypes`. Set
+   `bidirectional: true` when two components have mutual direct communication.
 6. Add `meta.glossary` entries for all domain-specific abbreviations.
 7. Place text annotations on the canvas for warnings, legends, and scope boundaries.
 8. For embedded images: always write a descriptive `description`.
+9. After analysing the diagram, use `diagramflow_setLlmNotes` to record any architectural
+   constraints, decisions, or cross-cutting patterns discovered — this is your long-term
+   memory for this diagram.
 
 A well-annotated diagram enables agents to understand the system and generate correct,
 context-aware code without reading any external source files.

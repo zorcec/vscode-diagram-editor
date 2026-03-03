@@ -1,6 +1,6 @@
 import { memo } from 'react';
-import { BaseEdge, getBezierPath, EdgeLabelRenderer } from '@xyflow/react';
-import type { EdgeProps } from '@xyflow/react';
+import { BaseEdge, getSmoothStepPath, EdgeLabelRenderer, Position, useInternalNode } from '@xyflow/react';
+import type { EdgeProps, InternalNode } from '@xyflow/react';
 import type { DiagramEdgeData } from '../lib/docToFlow';
 
 const DASH_MAP: Record<string, string> = {
@@ -9,30 +9,112 @@ const DASH_MAP: Record<string, string> = {
   dotted: '2 4',
 };
 
+/**
+ * Computes which face of each node is closest to the other node, then returns
+ * the absolute XY coordinate of that face's midpoint and the ReactFlow Position
+ * enum for both source and target. This makes edges automatically re-route to the
+ * most direct side whenever a node is dragged — no fixed handle IDs needed.
+ */
+function computeFloatingHandles(
+  sourceNode: InternalNode | undefined,
+  targetNode: InternalNode | undefined,
+): {
+  sourceX: number; sourceY: number; sourcePosition: Position;
+  targetX: number; targetY: number; targetPosition: Position;
+} | null {
+  if (!sourceNode?.internals?.positionAbsolute || !targetNode?.internals?.positionAbsolute) {
+    return null;
+  }
+
+  const sw = sourceNode.measured?.width ?? 160;
+  const sh = sourceNode.measured?.height ?? 48;
+  const tw = targetNode.measured?.width ?? 160;
+  const th = targetNode.measured?.height ?? 48;
+
+  const sx = sourceNode.internals.positionAbsolute.x;
+  const sy = sourceNode.internals.positionAbsolute.y;
+  const tx = targetNode.internals.positionAbsolute.x;
+  const ty = targetNode.internals.positionAbsolute.y;
+
+  // Vector between node centers
+  const dx = (tx + tw / 2) - (sx + sw / 2);
+  const dy = (ty + th / 2) - (sy + sh / 2);
+
+  // Source exit: dominant axis determines which face to exit from
+  let sourcePosition: Position;
+  let sourceX: number;
+  let sourceY: number;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (dx >= 0) {
+      sourcePosition = Position.Right; sourceX = sx + sw; sourceY = sy + sh / 2;
+    } else {
+      sourcePosition = Position.Left; sourceX = sx; sourceY = sy + sh / 2;
+    }
+  } else {
+    if (dy >= 0) {
+      sourcePosition = Position.Bottom; sourceX = sx + sw / 2; sourceY = sy + sh;
+    } else {
+      sourcePosition = Position.Top; sourceX = sx + sw / 2; sourceY = sy;
+    }
+  }
+
+  // Target entry: opposite face to the source exit direction
+  let targetPosition: Position;
+  let targetX: number;
+  let targetY: number;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (dx >= 0) {
+      targetPosition = Position.Left; targetX = tx; targetY = ty + th / 2;
+    } else {
+      targetPosition = Position.Right; targetX = tx + tw; targetY = ty + th / 2;
+    }
+  } else {
+    if (dy >= 0) {
+      targetPosition = Position.Top; targetX = tx + tw / 2; targetY = ty;
+    } else {
+      targetPosition = Position.Bottom; targetX = tx + tw / 2; targetY = ty + th;
+    }
+  }
+
+  return { sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition };
+}
+
 export const DiagramEdge = memo(
   ({
     id,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
+    source,
+    target,
+    sourceX: defaultSourceX,
+    sourceY: defaultSourceY,
+    targetX: defaultTargetX,
+    targetY: defaultTargetY,
+    sourcePosition: defaultSourcePosition,
+    targetPosition: defaultTargetPosition,
     data,
     label,
   }: EdgeProps & { data?: DiagramEdgeData }) => {
-    const [edgePath, labelX, labelY] = getBezierPath({
-      sourceX,
-      sourceY,
-      targetX,
-      targetY,
-      sourcePosition,
-      targetPosition,
+    const sourceNode = useInternalNode(source);
+    const targetNode = useInternalNode(target);
+
+    // Prefer dynamically computed floating handles; fall back to ReactFlow defaults
+    const floating = computeFloatingHandles(sourceNode, targetNode);
+
+    const [edgePath, labelX, labelY] = getSmoothStepPath({
+      sourceX: floating?.sourceX ?? defaultSourceX,
+      sourceY: floating?.sourceY ?? defaultSourceY,
+      targetX: floating?.targetX ?? defaultTargetX,
+      targetY: floating?.targetY ?? defaultTargetY,
+      sourcePosition: floating?.sourcePosition ?? defaultSourcePosition,
+      targetPosition: floating?.targetPosition ?? defaultTargetPosition,
+      borderRadius: 8,
     });
 
     const dasharray = DASH_MAP[data?.style ?? 'solid'] ?? 'none';
-    const markerEnd =
-      data?.arrow === 'none' ? undefined : 'url(#diagramflow-arrow)';
+    const hasArrow = data?.arrow !== 'none';
+    const isBidirectional = data?.bidirectional === true;
+
+    const markerEnd = hasArrow ? 'url(#diagramflow-arrow)' : undefined;
+    const markerStart = (hasArrow && isBidirectional) ? 'url(#diagramflow-arrow-start)' : undefined;
 
     return (
       <>
@@ -45,15 +127,17 @@ export const DiagramEdge = memo(
             strokeWidth: 2,
           }}
           markerEnd={markerEnd}
+          markerStart={markerStart}
         />
         {label && (
           <EdgeLabelRenderer>
             <div
-              className="edge-label"
+              className="edge-label nodrag nopan"
               style={{
                 position: 'absolute',
                 transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
                 pointerEvents: 'none',
+                zIndex: 10,
               }}
               data-testid={`edge-label-${id}`}
             >

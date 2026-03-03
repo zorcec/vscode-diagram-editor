@@ -260,7 +260,7 @@
         "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "addEdges",
         "displayName": "Add Diagram Edges",
-        "modelDescription": "Adds edges between existing nodes in the .diagram file at `filePath`. Each edge requires source and target node ids. Optional: label, style, arrow, animated. `filePath` is required.",
+        "modelDescription": "Adds edges between existing nodes in the .diagram file at `filePath`. Each edge requires source and target node ids. Optional: label, style, arrow, animated, bidirectional. Set bidirectional:true when two components call each other directly (adds arrowheads at both ends). `filePath` is required.",
         "userDescription": "Add edges between diagram nodes.",
         "canBeReferencedInPrompt": true,
         "icon": "$(git-merge)",
@@ -289,7 +289,11 @@
                     "type": "string",
                     "enum": ["arrow", "open", "none"]
                   },
-                  "animated": { "type": "boolean" }
+                  "animated": { "type": "boolean" },
+                  "bidirectional": {
+                    "type": "boolean",
+                    "description": "When true, the edge has arrowheads at both ends. Use for mutual/bidirectional communication."
+                  }
                 }
               }
             }
@@ -325,7 +329,7 @@
         "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "updateEdges",
         "displayName": "Update Diagram Edges",
-        "modelDescription": "Updates properties of existing edges in the .diagram file at `filePath`. Each update requires the edge id. Updatable: label, style, arrow, animated, source, target. `filePath` is required.",
+        "modelDescription": "Updates properties of existing edges in the .diagram file at `filePath`. Each update requires the edge id. Updatable: label, style, arrow, animated, bidirectional, source, target. `filePath` is required.",
         "userDescription": "Update properties of existing diagram edges.",
         "canBeReferencedInPrompt": true,
         "icon": "$(edit)",
@@ -354,6 +358,10 @@
                     "enum": ["arrow", "open", "none"]
                   },
                   "animated": { "type": "boolean" },
+                  "bidirectional": {
+                    "type": "boolean",
+                    "description": "When true, the edge has arrowheads at both ends."
+                  },
                   "source": { "type": "string" },
                   "target": { "type": "string" }
                 }
@@ -454,6 +462,30 @@
                   }
                 }
               }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_setLlmNotes",
+        "tags": ["diagram", "diagramflow", "agent", "metadata"],
+        "toolReferenceName": "setLlmNotes",
+        "displayName": "Set Agent Notes",
+        "modelDescription": "Persists agent-written notes in meta.llmNotes of the .diagram file. Use this to record cross-cutting architectural observations, constraints, decisions, or patterns that should be remembered between sessions. These notes are surfaced in agentContext.llmNotes on every future read. Pass an empty string to clear. `filePath` and `notes` are required.",
+        "userDescription": "Store agent observations and notes about the diagram architecture.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(note)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["filePath", "notes"],
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Absolute path to the .diagram file to update."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Agent notes to persist. Write concise observations about architectural decisions, constraints, or patterns. Use an empty string to clear existing notes."
             }
           }
         }

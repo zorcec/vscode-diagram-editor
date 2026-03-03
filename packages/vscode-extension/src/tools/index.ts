@@ -11,6 +11,7 @@ import { UpdateEdgesTool } from './UpdateEdgesTool';
 import { AddGroupsTool } from './AddGroupsTool';
 import { RemoveGroupsTool } from './RemoveGroupsTool';
 import { UpdateGroupsTool } from './UpdateGroupsTool';
+import { SetLlmNotesTool } from './SetLlmNotesTool';
 
 export function registerDiagramTools(
   context: vscode.ExtensionContext,
@@ -28,6 +29,7 @@ export function registerDiagramTools(
     ['diagramflow_addGroups', new AddGroupsTool(diagramService)],
     ['diagramflow_removeGroups', new RemoveGroupsTool(diagramService)],
     ['diagramflow_updateGroups', new UpdateGroupsTool(diagramService)],
+    ['diagramflow_setLlmNotes', new SetLlmNotesTool(diagramService)],
   ];
 
   for (const [name, tool] of tools) {

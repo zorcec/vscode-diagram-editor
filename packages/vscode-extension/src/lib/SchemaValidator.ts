@@ -71,6 +71,9 @@ function validateMeta(meta: unknown, errors: string[]): void {
       }
     }
   }
+  if (m.llmNotes !== undefined && typeof m.llmNotes !== 'string') {
+    errors.push('meta.llmNotes must be a string');
+  }
 }
 
 function validateNodes(
@@ -207,6 +210,10 @@ function validateEdges(
 
     if (e.protocol !== undefined && typeof e.protocol !== 'string') {
       errors.push(`${prefix}.protocol must be a string`);
+    }
+
+    if (e.bidirectional !== undefined && typeof e.bidirectional !== 'boolean') {
+      errors.push(`${prefix}.bidirectional must be a boolean`);
     }
 
     if (e.dataTypes !== undefined) {

@@ -34,6 +34,8 @@ export interface DiagramNodeData extends Record<string, unknown> {
 export interface DiagramEdgeData extends Record<string, unknown> {
   style: 'solid' | 'dashed' | 'dotted';
   arrow: 'normal' | 'arrow' | 'open' | 'none';
+  /** When true the edge has arrowheads at both ends. */
+  bidirectional?: boolean;
   protocol?: string;
   dataTypes?: string[];
 }
@@ -205,7 +207,7 @@ export function docToFlowEdges(doc: DiagramDocument): Edge<DiagramEdgeData>[] {
       label: e.label ?? '',
       animated: e.animated ?? false,
       reconnectable: true,
-      data: { style: e.style, arrow: e.arrow, protocol: e.protocol, dataTypes: e.dataTypes },
+      data: { style: e.style, arrow: e.arrow, bidirectional: e.bidirectional, protocol: e.protocol, dataTypes: e.dataTypes },
     }));
 }
 

@@ -421,6 +421,17 @@ function CanvasPanelInner({ graph }: CanvasPanelProps) {
               >
                 <polygon points="0 0, 10 3.5, 0 7" fill="var(--rf-edge, #888)" />
               </marker>
+              {/* Reverse arrowhead for bidirectional edges — rendered at the source end. */}
+              <marker
+                id="diagramflow-arrow-start"
+                markerWidth="10"
+                markerHeight="7"
+                refX="1"
+                refY="3.5"
+                orient="auto-start-reverse"
+              >
+                <polygon points="0 0, 10 3.5, 0 7" fill="var(--rf-edge, #888)" />
+              </marker>
             </defs>
           </svg>
         </ReactFlow>

@@ -92,7 +92,7 @@ export interface GraphState {
   ) => void;
   onUpdateEdgeProps: (
     id: string,
-    changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; protocol?: string; dataTypes?: string[] },
+    changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; bidirectional?: boolean; protocol?: string; dataTypes?: string[] },
   ) => void;
   onUpdateGroupProps: (id: string, changes: { label?: string; color?: NodeColor; collapsed?: boolean }) => void;
   onUpdateTextElementProps: (id: string, changes: {
@@ -493,7 +493,7 @@ export function useGraphState(
   const onUpdateEdgeProps = useCallback(
     (
       id: string,
-      changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; protocol?: string; dataTypes?: string[] },
+      changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; bidirectional?: boolean; protocol?: string; dataTypes?: string[] },
     ) => {
       bridge.postMessage({ type: 'UPDATE_EDGE_PROPS', id, changes });
     },

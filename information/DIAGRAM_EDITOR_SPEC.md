@@ -132,6 +132,7 @@ export interface DiagramEdge {
   style: EdgeStyle;      // default 'solid'
   arrow: ArrowType;      // default 'arrow'
   animated?: boolean;    // animated dash flow
+  bidirectional?: boolean; // true = arrowheads at both ends (↔); default false
 }
 
 export interface DiagramGroup {
@@ -145,6 +146,7 @@ export interface DiagramMeta {
   description?: string;
   created: string;       // ISO8601
   modified: string;      // ISO8601
+  llmNotes?: string;     // agent-written notes (see diagramflow_setLlmNotes); persisted across sessions
 }
 
 export interface DiagramDocument {
@@ -211,7 +213,8 @@ export interface DiagramDocument {
       "target": "p3n8a1zq",
       "label": "JWT request",
       "style": "solid",
-      "arrow": "arrow"
+      "arrow": "arrow",
+      "bidirectional": true
     },
     {
       "id": "e5d6e7f8",
@@ -1096,7 +1099,7 @@ This is the core differentiator of v2. Instead of building a custom LLM panel, t
         "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "addEdges",
         "displayName": "Add Diagram Edges",
-        "modelDescription": "Adds one or more edges (connections) between existing nodes in the currently open .diagram file. Each edge requires source and target node ids. Optionally accepts label, style ('solid'|'dashed'|'dotted'), arrow ('arrow'|'open'|'none'), and animated (boolean). Use getDiagram first to find valid node ids for source and target.",
+        "modelDescription": "Adds one or more edges (connections) between existing nodes in the currently open .diagram file. Each edge requires source and target node ids. Optionally accepts label, style ('solid'|'dashed'|'dotted'), arrow ('arrow'|'open'|'none'), animated (boolean), and bidirectional (boolean — renders arrowheads at both ends). Use getDiagram first to find valid node ids for source and target.",
         "userDescription": "Add edges (connections) between diagram nodes.",
         "canBeReferencedInPrompt": true,
         "icon": "$(git-merge)",
@@ -1116,7 +1119,8 @@ This is the core differentiator of v2. Instead of building a custom LLM panel, t
                   "label": { "type": "string", "description": "Optional edge label" },
                   "style": { "type": "string", "enum": ["solid", "dashed", "dotted"], "description": "Edge line style. Default: solid" },
                   "arrow": { "type": "string", "enum": ["arrow", "open", "none"], "description": "Arrow type. Default: arrow" },
-                  "animated": { "type": "boolean", "description": "Animated dash flow. Default: false" }
+                  "animated": { "type": "boolean", "description": "Animated dash flow. Default: false" },
+                  "bidirectional": { "type": "boolean", "description": "Render arrowheads at both ends. Default: false" }
                 }
               }
             }
@@ -1149,7 +1153,7 @@ This is the core differentiator of v2. Instead of building a custom LLM panel, t
         "tags": ["diagram", "diagramflow"],
         "toolReferenceName": "updateEdges",
         "displayName": "Update Diagram Edges",
-        "modelDescription": "Updates properties of one or more existing edges in the currently open .diagram file. Each update requires the edge id. Updatable properties: label, style, arrow, animated, source, target. Use getDiagram first to find edge ids.",
+        "modelDescription": "Updates properties of one or more existing edges in the currently open .diagram file. Each update requires the edge id. Updatable properties: label, style, arrow, animated, bidirectional, source, target. Use getDiagram first to find edge ids.",
         "userDescription": "Update properties of existing diagram edges.",
         "canBeReferencedInPrompt": true,
         "icon": "$(edit)",
@@ -1169,10 +1173,31 @@ This is the core differentiator of v2. Instead of building a custom LLM panel, t
                   "style": { "type": "string", "enum": ["solid", "dashed", "dotted"] },
                   "arrow": { "type": "string", "enum": ["arrow", "open", "none"] },
                   "animated": { "type": "boolean" },
+                  "bidirectional": { "type": "boolean", "description": "Render arrowheads at both ends" },
                   "source": { "type": "string" },
                   "target": { "type": "string" }
                 }
               }
+            }
+          }
+        }
+      },
+      {
+        "name": "diagramflow_setLlmNotes",
+        "tags": ["diagram", "diagramflow"],
+        "toolReferenceName": "setLlmNotes",
+        "displayName": "Set Agent Notes",
+        "modelDescription": "Persists agent-written notes into meta.llmNotes of the currently open .diagram file. Use this to record architectural constraints, decisions, or cross-cutting patterns discovered during analysis. The notes are surfaced in agentContext.llmNotes at the start of every subsequent tool call — acting as your long-term memory for this diagram. Always read agentContext.llmNotes before overwriting; append, do not replace prior observations unless they are incorrect.",
+        "userDescription": "Save agent observations about this diagram for future sessions.",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(notebook)",
+        "inputSchema": {
+          "type": "object",
+          "required": ["notes"],
+          "properties": {
+            "notes": {
+              "type": "string",
+              "description": "Agent-written notes to persist in meta.llmNotes. Pass an empty string to clear."
             }
           }
         }
@@ -1194,6 +1219,7 @@ import { UpdateNodesTool } from './UpdateNodesTool';
 import { AddEdgesTool } from './AddEdgesTool';
 import { RemoveEdgesTool } from './RemoveEdgesTool';
 import { UpdateEdgesTool } from './UpdateEdgesTool';
+import { SetLlmNotesTool } from './SetLlmNotesTool';
 
 export function registerDiagramTools(
   context: vscode.ExtensionContext,
@@ -1207,6 +1233,7 @@ export function registerDiagramTools(
     ['diagramflow_addEdges', new AddEdgesTool(diagramService)],
     ['diagramflow_removeEdges', new RemoveEdgesTool(diagramService)],
     ['diagramflow_updateEdges', new UpdateEdgesTool(diagramService)],
+    ['diagramflow_setLlmNotes', new SetLlmNotesTool(diagramService)],
   ];
 
   for (const [name, tool] of tools) {
@@ -1491,7 +1518,7 @@ const SHAPE_RENDERERS: Record<NodeShape, React.FC<NodeRenderProps>> = {
 ```
 
 All shapes:
-- Render handles on all 4 sides
+- Render **8 handles** — both `source` and `target` types at each of 4 positions (Top, Right, Bottom, Left). This enables edges to enter and exit from any side of any node. With `ConnectionMode.Loose`, any handle can connect to any other handle.
 - Show a lock icon (🔒) in top-right when pinned
 - Support double-click for inline label editing
 - Support right-click for context menu (change shape, color, pin/unpin, notes)

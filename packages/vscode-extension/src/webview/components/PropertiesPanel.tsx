@@ -49,7 +49,7 @@ interface EdgeProps {
   edge: Edge;
   onUpdateEdge: (
     id: string,
-    changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; protocol?: string; dataTypes?: string[] },
+    changes: { label?: string; style?: EdgeStyle; arrow?: ArrowType; animated?: boolean; bidirectional?: boolean; protocol?: string; dataTypes?: string[] },
   ) => void;
 }
 
@@ -693,16 +693,18 @@ function GroupPropertiesPanel({ group, onUpdateGroup }: GroupProps) {
 // ---------------------------------------------------------------------------
 
 function EdgePropertiesPanel({ edge, onUpdateEdge }: EdgeProps) {
-  const data = edge.data as { style?: EdgeStyle; arrow?: ArrowType; protocol?: string; dataTypes?: string[] } | undefined;
+  const data = edge.data as { style?: EdgeStyle; arrow?: ArrowType; bidirectional?: boolean; protocol?: string; dataTypes?: string[] } | undefined;
   const [label, setLabel] = useState(String(edge.label ?? ''));
   const [animated, setAnimated] = useState(edge.animated ?? false);
+  const [bidirectional, setBidirectional] = useState(data?.bidirectional ?? false);
   const [edgeProtocol, setEdgeProtocol] = useState(data?.protocol ?? '');
   const [dataTypesInput, setDataTypesInput] = useState((data?.dataTypes ?? []).join(', '));
 
   useEffect(() => {
     setLabel(String(edge.label ?? ''));
     setAnimated(edge.animated ?? false);
-    const d = edge.data as { protocol?: string; dataTypes?: string[] } | undefined;
+    const d = edge.data as { bidirectional?: boolean; protocol?: string; dataTypes?: string[] } | undefined;
+    setBidirectional(d?.bidirectional ?? false);
     setEdgeProtocol(d?.protocol ?? '');
     setDataTypesInput((d?.dataTypes ?? []).join(', '));
   }, [edge.id, edge.label, edge.animated, edge.data]);
@@ -719,6 +721,12 @@ function EdgePropertiesPanel({ edge, onUpdateEdge }: EdgeProps) {
     setAnimated(next);
     onUpdateEdge(edge.id, { animated: next });
   }, [edge.id, animated, onUpdateEdge]);
+
+  const toggleBidirectional = useCallback(() => {
+    const next = !bidirectional;
+    setBidirectional(next);
+    onUpdateEdge(edge.id, { bidirectional: next });
+  }, [edge.id, bidirectional, onUpdateEdge]);
 
   return (
     <aside className="properties-panel" data-testid="properties-panel">
@@ -778,6 +786,19 @@ function EdgePropertiesPanel({ edge, onUpdateEdge }: EdgeProps) {
           checked={animated}
           onChange={toggleAnimated}
           data-testid="prop-edge-animated"
+        />
+      </div>
+
+      <div className="prop-group prop-group--row">
+        <label className="prop-label" htmlFor="prop-edge-bidirectional">Bidirectional</label>
+        <input
+          id="prop-edge-bidirectional"
+          type="checkbox"
+          className="prop-checkbox"
+          checked={bidirectional}
+          onChange={toggleBidirectional}
+          data-testid="prop-edge-bidirectional"
+          title="Add arrowheads at both ends — use for mutual communication between components"
         />
       </div>
 

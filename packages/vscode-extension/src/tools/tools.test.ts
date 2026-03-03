@@ -13,6 +13,7 @@ import { UpdateEdgesTool } from './UpdateEdgesTool';
 import { AddGroupsTool } from './AddGroupsTool';
 import { RemoveGroupsTool } from './RemoveGroupsTool';
 import { UpdateGroupsTool } from './UpdateGroupsTool';
+import { SetLlmNotesTool } from './SetLlmNotesTool';
 import { registerDiagramTools } from './index';
 import { fileNameFromPath, openDiagramDocument } from './toolHelpers';
 import type { DiagramService } from '../DiagramService';
@@ -81,6 +82,7 @@ function makeMockDiagramService(
   return {
     parseDocument: vi.fn().mockReturnValue(makeDoc()),
     applySemanticOps: vi.fn().mockResolvedValue({ success: true }),
+    setLlmNotes: vi.fn().mockResolvedValue({ success: true }),
     setActiveDocument: vi.fn(),
     getActiveDocument: vi.fn().mockReturnValue(null),
     autoLayoutAll: vi.fn().mockResolvedValue(undefined),
@@ -1196,8 +1198,72 @@ describe('UpdateGroupsTool', () => {
   });
 });
 
+describe('SetLlmNotesTool', () => {
+  it('prepareInvocation shows updating message when notes provided', async () => {
+    const svc = makeMockDiagramService();
+    const tool = new SetLlmNotesTool(svc);
+    const result = await tool.prepareInvocation(
+      { input: { filePath: TEST_FILE_PATH, notes: 'Auth is stateless.' } } as any,
+      mockToken,
+    );
+    expect(result.invocationMessage).toContain('Updating');
+  });
+
+  it('prepareInvocation shows clearing message when notes are empty', async () => {
+    const svc = makeMockDiagramService();
+    const tool = new SetLlmNotesTool(svc);
+    const result = await tool.prepareInvocation(
+      { input: { filePath: TEST_FILE_PATH, notes: '' } } as any,
+      mockToken,
+    );
+    expect(result.invocationMessage).toContain('Clearing');
+  });
+
+  it('calls setLlmNotes with the provided notes', async () => {
+    const svc = makeMockDiagramService();
+    const tool = new SetLlmNotesTool(svc);
+    await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH, notes: 'Auth is stateless.' } } as any,
+      mockToken,
+    );
+    expect(svc.setLlmNotes).toHaveBeenCalledWith('Auth is stateless.', expect.anything());
+  });
+
+  it('returns success message when notes are saved', async () => {
+    const svc = makeMockDiagramService();
+    const tool = new SetLlmNotesTool(svc);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH, notes: 'Auth is stateless.' } } as any,
+      mockToken,
+    );
+    expect(resultText(result)).toContain('saved');
+  });
+
+  it('returns cleared message when notes are empty', async () => {
+    const svc = makeMockDiagramService();
+    const tool = new SetLlmNotesTool(svc);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH, notes: '' } } as any,
+      mockToken,
+    );
+    expect(resultText(result)).toContain('cleared');
+  });
+
+  it('returns failure message on error', async () => {
+    const svc = makeMockDiagramService({
+      setLlmNotes: vi.fn().mockResolvedValue({ success: false, error: 'Disk full' }),
+    });
+    const tool = new SetLlmNotesTool(svc);
+    const result = await tool.invoke(
+      { input: { filePath: TEST_FILE_PATH, notes: 'some notes' } } as any,
+      mockToken,
+    );
+    expect(resultText(result)).toContain('Failed');
+  });
+});
+
 describe('registerDiagramTools', () => {
-  it('registers all 11 tools', () => {
+  it('registers all 12 tools', () => {
     const svc = makeMockDiagramService();
     const context = {
       subscriptions: [] as any[],
@@ -1206,7 +1272,7 @@ describe('registerDiagramTools', () => {
 
     registerDiagramTools(context, svc as any);
 
-    expect(vscode.lm.registerTool).toHaveBeenCalledTimes(11);
+    expect(vscode.lm.registerTool).toHaveBeenCalledTimes(12);
     const toolNames = vi
       .mocked(vscode.lm.registerTool)
       .mock.calls.map((c) => c[0]);
@@ -1221,6 +1287,7 @@ describe('registerDiagramTools', () => {
     expect(toolNames).toContain('diagramflow_addGroups');
     expect(toolNames).toContain('diagramflow_removeGroups');
     expect(toolNames).toContain('diagramflow_updateGroups');
+    expect(toolNames).toContain('diagramflow_setLlmNotes');
   });
 });
 

@@ -416,6 +416,27 @@ export class DiagramService {
     return writeDocumentToFile(target, modified);
   }
 
+  /**
+   * Persists agent-written notes about this diagram into meta.llmNotes.
+   * Call this whenever you discover architectural decisions, constraints, or patterns
+   * that should be remembered in future sessions. Pass null to clear the notes.
+   */
+  async setLlmNotes(notes: string | null, doc?: vscode.TextDocument): Promise<{ success: boolean; error?: string }> {
+    const state = this.resolveDocument(doc);
+    if (!state) return { success: false, error: 'No active diagram document' };
+    const { target, current } = state;
+
+    const modified = structuredClone(current);
+    if (notes === null || notes.trim() === '') {
+      delete modified.meta.llmNotes;
+    } else {
+      modified.meta.llmNotes = notes.trim();
+    }
+    this.stampModified(modified);
+    this.recordHistory(current);
+    return writeDocumentToFile(target, modified);
+  }
+
   emptyDocument(): DiagramDocument {
     return createEmptyDocument();
   }

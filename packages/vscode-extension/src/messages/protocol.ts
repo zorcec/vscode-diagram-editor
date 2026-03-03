@@ -71,6 +71,7 @@ export type WebviewMessage =
         style?: EdgeStyle;
         arrow?: ArrowType;
         animated?: boolean;
+        bidirectional?: boolean;
         protocol?: string;
         dataTypes?: string[];
       };

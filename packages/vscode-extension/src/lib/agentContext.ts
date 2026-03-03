@@ -22,7 +22,10 @@ const USAGE_HINT =
   'diagramflow_getDiagram / diagramflow_addNodes / diagramflow_addEdges / ' +
   'diagramflow_updateNodes / diagramflow_updateEdges / diagramflow_removeNodes / ' +
   'diagramflow_removeEdges / diagramflow_addGroups / diagramflow_updateGroups / ' +
-  'diagramflow_removeGroups tools to read and modify this diagram programmatically.';
+  'diagramflow_removeGroups tools to read and modify this diagram programmatically. ' +
+  'Store agent-specific observations in meta.llmNotes via diagramflow_updateNodes ' +
+  '(update the diagram meta) — this persists your reasoning across sessions. ' +
+  'Use bidirectional:true on edges to express mutual communication between components.';
 
 /** Generates a new {@link AgentContext} from the current diagram state. */
 export function generateAgentContext(doc: DiagramDocument): AgentContext {
@@ -48,6 +51,7 @@ export function generateAgentContext(doc: DiagramDocument): AgentContext {
       to: tgt,
       ...(e.label ? { label: e.label } : {}),
       ...(e.style !== 'solid' ? { style: e.style } : {}),
+      ...(e.bidirectional ? { bidirectional: true } : {}),
       ...(e.protocol ? { protocol: e.protocol } : {}),
       ...(e.dataTypes && e.dataTypes.length > 0 ? { dataTypes: e.dataTypes } : {}),
     };
@@ -73,6 +77,7 @@ export function generateAgentContext(doc: DiagramDocument): AgentContext {
     ...(insights.length > 0 ? { insights } : {}),
     ...(textAnnotations.length > 0 ? { textAnnotations } : {}),
     ...(imageAnnotations.length > 0 ? { imageAnnotations } : {}),
+    ...(doc.meta.llmNotes ? { llmNotes: doc.meta.llmNotes } : {}),
     usage: USAGE_HINT,
   };
 }

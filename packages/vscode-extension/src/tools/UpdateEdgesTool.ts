@@ -12,6 +12,8 @@ interface UpdateEdgesInput {
     style?: string;
     arrow?: string;
     animated?: boolean;
+    /** When true the edge has arrowheads at both ends (bidirectional). */
+    bidirectional?: boolean;
     source?: string;
     target?: string;
   }[];
@@ -56,6 +58,7 @@ export class UpdateEdgesTool implements vscode.LanguageModelTool<UpdateEdgesInpu
         ...(u.style && { style: u.style as EdgeStyle }),
         ...(u.arrow && { arrow: u.arrow as ArrowType }),
         ...(u.animated !== undefined && { animated: u.animated }),
+        ...(u.bidirectional !== undefined && { bidirectional: u.bidirectional }),
         ...(u.source && { source: u.source }),
         ...(u.target && { target: u.target }),
       },

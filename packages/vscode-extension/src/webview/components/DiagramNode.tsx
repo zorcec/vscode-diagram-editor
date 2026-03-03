@@ -34,10 +34,16 @@ export const DiagramNode = memo(({ id, data, selected }: DiagramNodeProps) => {
     <>
       {!isNote && (
         <>
-          <Handle type="target" position={Position.Top} id="top" />
-          <Handle type="target" position={Position.Left} id="left" />
-          <Handle type="source" position={Position.Bottom} id="bottom" />
-          <Handle type="source" position={Position.Right} id="right" />
+          {/* All 4 sides get both source and target handles so edges can connect
+              from any direction — users are not forced to drag bottom→top only. */}
+          <Handle type="source" position={Position.Top} id="top-s" />
+          <Handle type="target" position={Position.Top} id="top-t" />
+          <Handle type="source" position={Position.Right} id="right-s" />
+          <Handle type="target" position={Position.Right} id="right-t" />
+          <Handle type="source" position={Position.Bottom} id="bottom-s" />
+          <Handle type="target" position={Position.Bottom} id="bottom-t" />
+          <Handle type="source" position={Position.Left} id="left-s" />
+          <Handle type="target" position={Position.Left} id="left-t" />
         </>
       )}
 

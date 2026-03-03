@@ -170,6 +170,9 @@ function addEdge(
     style: partial.style ?? 'solid',
     arrow: partial.arrow ?? 'arrow',
     animated: partial.animated,
+    ...(partial.bidirectional !== undefined ? { bidirectional: partial.bidirectional } : {}),
+    ...(partial.protocol ? { protocol: partial.protocol } : {}),
+    ...(partial.dataTypes?.length ? { dataTypes: partial.dataTypes } : {}),
   };
 
   const modified = structuredClone(doc);

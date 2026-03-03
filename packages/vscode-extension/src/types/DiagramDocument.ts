@@ -110,6 +110,13 @@ export interface DiagramEdge {
   style: EdgeStyle;
   arrow: ArrowType;
   animated?: boolean;
+  /**
+   * When true the edge carries arrows on BOTH ends, expressing a bidirectional
+   * relationship. The source→target arrow is always present; this flag adds a
+   * reverse arrowhead at the source end.
+   * Agents: use this when two components call each other directly.
+   */
+  bidirectional?: boolean;
   /** Communication protocol (e.g. "REST", "gRPC", "Kafka (async)", "WebSocket") */
   protocol?: string;
   /** Data types or schema names flowing over this edge (e.g. ["OrderDTO", "CustomerPII"]) */
@@ -157,6 +164,14 @@ export interface DiagramMeta {
    * Example: { "fulfilment": "Process of preparing and shipping a placed order" }
    */
   glossary?: Record<string, string>;
+  /**
+   * Persistent notes written by an AI agent about this diagram.
+   * Agents SHOULD update this field when they discover architectural decisions,
+   * constraints, or patterns that will help future reasoning about the diagram.
+   * This is the agent's long-term memory attached to the diagram file.
+   * Example: "Auth service is stateless; session state lives in Redis only."
+   */
+  llmNotes?: string;
 }
 
 /**
@@ -205,6 +220,8 @@ export interface AgentContext {
     to: string;
     label?: string;
     style?: EdgeStyle;
+    /** When true the relationship is bidirectional (arrows on both ends) */
+    bidirectional?: boolean;
     /** Communication protocol (e.g. "Kafka (async)", "REST") */
     protocol?: string;
     /** Data types / schema names transported over this edge */
@@ -233,6 +250,13 @@ export interface AgentContext {
    * Descriptions are the primary LLM-readable field; src is included for reference.
    */
   imageAnnotations?: { src: string; description?: string; href?: string }[];
+  /**
+   * Persistent agent-written notes about this diagram.
+   * Surfaced from meta.llmNotes — the agent's long-term memory for this diagram.
+   * Agents: read this first before making changes to understand prior reasoning.
+   * Update meta.llmNotes via diagramflow_updateNodes to persist new observations.
+   */
+  llmNotes?: string;
   /** How to use the diagram tools when the extension is installed */
   usage: string;
 }
