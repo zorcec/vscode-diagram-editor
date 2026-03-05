@@ -19,6 +19,7 @@ DiagramFlow VS Code extension.
 | [AGENT_METADATA_RESEARCH.md](AGENT_METADATA_RESEARCH.md) | Research on agent-readable diagram metadata — what information an LLM/coding agent needs to understand architecture diagrams; includes ranked field priorities, comparison to C4/arc42/Structurizr standards, and the DiagramFlow `agentContext` design |
 | [FEATURE_IDEAS.md](FEATURE_IDEAS.md) | Creative feature proposals for making DiagramFlow more useful for developers and AI agents — 15 features ranked by impact and effort |
 | [LLM_HELPFUL_METADATA.md](LLM_HELPFUL_METADATA.md) | Practical guide and research findings on which metadata fields help LLMs understand systems — covers all implemented fields with usage examples, best practices for text/image annotations, C4 node types, ADR links, security classifications, and the `agentContext` auto-generated block |
+| [COMPETITIVE-ANALYSIS-AND-FEATURE-OPPORTUNITIES.md](COMPETITIVE-ANALYSIS-AND-FEATURE-OPPORTUNITIES.md) | Competitive landscape analysis (draw.io, Excalidraw, Miro, Eraser.io, Whimsical, Lucidchart, Structurizr, GitDiagram) with UI pattern research, feature gap analysis, 8 new feature ideas, and a prioritised Tier 1/2/3 roadmap recommendation |
 
 ## Reference Diagrams
 
